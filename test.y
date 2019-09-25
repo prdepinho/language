@@ -47,8 +47,8 @@ int main(){
 
 program
 	: %empty
-	| program line ';'
 	| program line NEWLINE
+	| program error NEWLINE
 	;
 
 line
