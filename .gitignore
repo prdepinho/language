@@ -2,3 +2,5 @@
 program
 tags
 test
+*.yy.c
+*.tab.*

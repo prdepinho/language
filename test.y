@@ -1,6 +1,7 @@
 
 %{
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include "hash.h"
@@ -37,59 +38,43 @@ int main(){
 	float number;
 	char *str;
 }
-%type <str> WORD
+%type <str> IDENTIFIER
 %type <str> STRING_LITERAL
-%type <number> expression NUMBER
-%token UNDERLINE NEWLINE WORD NUMBER STRING_LITERAL PRINT
+%type <str> type
+%type <number> NUMBER
+%token UNDERLINE NEWLINE IDENTIFIER NUMBER STRING_LITERAL PRINT BYTE INT LONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT
 %left '+' '-'
 
 %%
 
 program
 	: %empty
-	| program line NEWLINE
+	| program assignment NEWLINE
+	| program command NEWLINE
 	| program error NEWLINE
-	;
-
-line
-	: expression
 	{
-		printf("%f\n", $1);
+		printf("Error\n");
 	}
 	;
 
-expression
-	: NUMBER 
-	| expression '+' expression { $$ = $1 + $3; }
-	| expression '-' expression { $$ = $1 - $3; }
-	| expression '*' expression { $$ = $1 * $3; }
-	| expression '/' expression { $$ = $1 / $3; }
-	| '-' expression { $$ = -$2; }
-	| expression '^' expression { $$ = pow($1, $3); }
-	| '(' expression ')' { $$ = $2; }
-	;
-
 assignment
-	: WORD '=' NUMBER
+	: type IDENTIFIER
 	{
-		float *p = &($3);
-		if (map_put(variables, $1, strlen($1), (uint8_t*)p, sizeof(float))){
-			fprintf(stderr, "out of memory for variables.\n");
-		}
-		printf("Command: %s = %f\n", $1, $3);
-		free($1);
+		printf("Declaration: %s %s\n", $1, $2);
 	}
 	;
 
 command
-	: PRINT '(' WORD ')'
-	{
-		float *p;
-		size_t size;
-		if(map_get(variables, $3, strlen($3), (uint8_t*)p, &size)){
-			fprintf(stderr, "out of memory for variables.\n");
-		}
-		printf("%f\n", *p);
-		free($3);
-	}
+	: QUIT { exit(0); }
+	| EXIT { exit(0); }
+	;
+
+type
+	: BYTE
+	| INT
+	| LONG
+	| FLOAT
+	| DOUBLE
+	| BOOL
+	| STRING
 	;
