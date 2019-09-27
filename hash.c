@@ -85,6 +85,9 @@ int map_get(Map *map,
 			return 1;
 	}
 
+	if (map->buckets[hash].key == 0)
+		return 1;
+
 	*out_vlen = map->buckets[hash].vlen;
 	memcpy(out_value, map->buckets[hash].value, *out_vlen);
 	return 0;
