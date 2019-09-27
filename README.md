@@ -36,3 +36,16 @@ command
 		free($3);
 	}
 	;
+
+		var.type = $1;
+		switch(var.type){
+		case BYTE: var.byte_value = $2; break;
+		case INT: var.int_value = $2; break;
+		case UINT: var.int_value = $2; break;
+		case LONG: var.logn_value = $2; break;
+		case ULONG: var.logn_value = $2; break;
+		case FLOAT: var.float_value = $2; break;
+		case DOUBLE: var.double_value = $2; break;
+		case BOOL: var.bool_value = $2; break;
+		case STRING: var.string_value = $2; break;
+		}

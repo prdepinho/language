@@ -10,7 +10,9 @@ quit						{return QUIT;}
 exit						{return EXIT;}
 byte						{return BYTE;}
 int							{return INT;}
+uint						{return UINT;}
 long						{return LONG;}
+ulong						{return ULONG;}
 float						{return FLOAT;}
 double						{return DOUBLE;}
 bool						{return BOOL;}
