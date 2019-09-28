@@ -1,9 +1,37 @@
 #include <stdio.h>
 #include <string.h>
 #include "hash.h"
+#include "array.h"
 
 int main(void){
 
+	{
+		size_t data_size = sizeof(int);
+		size_t initial_length = 10;
+
+		Array *array = array_new(data_size, initial_length);
+
+		int in;
+		int out;
+
+		in = 10;
+		array_set(0, &in);
+
+		in = 42;
+		array_set(2, &in);
+
+		array_get(0, &out);
+		printf("%d\n", out);
+
+		array_get(2, &out);
+		printf("%d\n", out);
+
+
+		array_delete(array);
+		printf("Done\n");
+	}
+
+#if false
 	{
 		Map *map = map_new(1024);
 		if (map == NULL) {
@@ -34,6 +62,7 @@ int main(void){
 		map_delete(map);
 		printf("finished\n");
 	}
+#endif
 
 	// ---------------------------
 
