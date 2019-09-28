@@ -24,11 +24,11 @@ Map *map_new(size_t length);
 void map_delete(Map *map);
 
 int map_put(Map *map,
-		const uint8_t *key, size_t klen,
-		const uint8_t *value, size_t vlen);
+		const void *key, size_t klen,
+		const void *value, size_t vlen);
 int map_get(Map *map,
-		const uint8_t *key, size_t klen,
-		uint8_t *out_value, size_t *out_vlen);
+		const void *key, size_t klen,
+		void *out_value, size_t *out_vlen);
 
 uint32_t jenkins_one_at_a_time_hash(const uint8_t* key, size_t length);
 

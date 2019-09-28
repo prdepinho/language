@@ -1,6 +1,36 @@
 #include "hash.h"
 #include <stdio.h>
 
+static int map_extend(Map *map){
+	size_t old_length = map->length;
+	size_t new_length = (map->length > 0) ? map->length * map->length : 2;
+
+	Bucket *old_buckets = map->buckets;
+	Bucket *new_buckets = (Bucket*) malloc(new_length * sizeof(Bucket));
+	if (new_buckets == NULL)
+		return 1;
+
+	map->buckets = new_buckets;
+	map->length = new_length;
+
+	for (int i = 0; i < old_length; ++i){
+		if(old_buckets[i].key != 0){
+			map_put(
+				map,
+				old_buckets[i].key,
+				old_buckets[i].klen,
+				old_buckets[i].value,
+				old_buckets[i].vlen
+			);
+			free(old_buckets[i].key);
+			free(old_buckets[i].value);
+		}
+	}
+	free(old_buckets);
+
+	return 0;
+}
+
 Map *map_new(size_t length){
 	Map *map = (Map*) malloc(sizeof(Map));
 	if (map == NULL)
@@ -36,8 +66,8 @@ void map_delete(Map *map){
 }
 
 int map_put(Map *map,
-		const uint8_t *key, size_t klen,
-		const uint8_t *value, size_t vlen)
+		const void *key, size_t klen,
+		const void *value, size_t vlen)
 {
 	uint32_t complete_hash = jenkins_one_at_a_time_hash(key, klen);
 	uint32_t hash = complete_hash & map->hash_mask;
@@ -49,7 +79,7 @@ int map_put(Map *map,
 	) {
 		hash = (hash + 1) % map->length;
 		if (hash == home_hash)
-			return 1;
+			map_extend(map);
 	}
 
 #ifdef DEBUG
@@ -68,8 +98,8 @@ int map_put(Map *map,
 }
 
 int map_get(Map *map,
-		const uint8_t *key, size_t klen,
-		uint8_t *out_value, size_t *out_vlen)
+		const void *key, size_t klen,
+		void *out_value, size_t *out_vlen)
 {
 	uint32_t complete_hash = jenkins_one_at_a_time_hash(key, klen);
 	uint32_t hash = complete_hash & map->hash_mask;

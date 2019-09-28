@@ -1,6 +1,6 @@
 #include "array.h"
 
-static int array_expand(Array *array){
+static int array_extend(Array *array){
 	size_t old_capacity = array->capacity;
 	size_t new_capacity = (array->capacity > 0) ? array->capacity * 2 : 2;
 
@@ -54,7 +54,7 @@ int array_get(Array *array, int index, void *out_element){
 
 int array_push(Array *array, void *element){
 	if (array->capacity == array->length){
-		int rval = array_expand(array);
+		int rval = array_extend(array);
 		if (rval)
 			return 1;
 	}

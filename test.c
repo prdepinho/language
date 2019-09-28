@@ -62,6 +62,32 @@ int main(void){
 
 	}
 #endif
+	{
+		Map *map = map_new(2);
+		if (map == NULL){
+			fprintf(stderr, "Map is null\n");
+			return 1;
+		}
+
+		int key;
+		size_t key_size = sizeof(int);
+		int value;
+		size_t value_size = sizeof(int);
+		
+		for (int i = 0; i < 10; i++){
+			key = i * 10;
+			value = i * 20;
+			int rval = map_put(map, &key, key_size, &value, value_size);
+			printf("(%d) set map\n", rval);
+		}
+
+		for (int i = 0; i < 10; i++){
+			key = i * 10;
+			value = 0;
+			int rval = map_get(map, &key, key_size, &value, &value_size);
+			printf("(%d) get map %d: %d\n", rval, key, value);
+		}
+	}
 
 #if false
 	{
