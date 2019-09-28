@@ -5,31 +5,63 @@
 
 int main(void){
 
+#if false
 	{
 		size_t data_size = sizeof(int);
 		size_t initial_length = 10;
 
+		printf("Test array\n");
 		Array *array = array_new(data_size, initial_length);
 
 		int in;
 		int out;
 
 		in = 10;
-		array_set(0, &in);
+		array_set(array, 0, &in);
 
 		in = 42;
-		array_set(2, &in);
+		array_set(array, 2, &in);
 
-		array_get(0, &out);
+		array_get(array, 0, &out);
 		printf("%d\n", out);
 
-		array_get(2, &out);
+		array_get(array, 1, &out);
+		printf("%d\n", out);
+
+		array_get(array, 2, &out);
 		printf("%d\n", out);
 
 
 		array_delete(array);
 		printf("Done\n");
+
+		printf("Test stack\n");
+		array = array_new(sizeof(int), 0);
+
+		for (int i = 0; i < 10; i++){
+			in = i * 10;
+			int rval = array_push(array, &in);
+			printf("rval: %d. push %d to array length: %zu, capacity: %zu\n", rval, in, array->length, array->capacity);
+		}
+
+		{
+			int rval = array_peek(array, &out);
+			printf("rval: %d. peek %d from array length: %zu, capacity: %zu\n", rval, out, array->length, array->capacity);
+		}
+
+		for (int i = 0; i < 10; i++){
+			int rval = array_pop(array, &out);
+			printf("rval: %d. pop %d from array length: %zu, capacity: %zu\n", rval, out, array->length, array->capacity);
+		}
+
+		int rval = array_pop(array, &out);
+		printf("rval: %d. pop %d from array length: %zu, capacity: %zu\n", rval, out, array->length, array->capacity);
+
+		array_delete(array);
+		printf("Done\n");
+
 	}
+#endif
 
 #if false
 	{
