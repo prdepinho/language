@@ -28,7 +28,7 @@ false						{return FALSE;}
 -							{return (int) yytext[0];}
 \.							{return (int) yytext[0];}
 \/							{return (int) yytext[0];}
-((-)?(([0-9]*\.)?[0-9]+))	{ yylval.number = atof(yytext); return NUMBER; }
+((([0-9]*\.)?[0-9]+))		{ yylval.number = atof(yytext); return NUMBER; }
 `							{return (int) yytext[0];}
 ~							{return (int) yytext[0];}
 !							{return (int) yytext[0];}

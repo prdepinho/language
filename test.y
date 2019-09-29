@@ -82,8 +82,8 @@ int assign_number(const char *identifier, double number) {
 		case TYPE_ULONG:     var.long_value = (uint64_t)number; break;
 		case TYPE_FLOAT:     var.float_value = (float)number; break;
 		case TYPE_DOUBLE:    var.double_value = (double)number; break;
-		// case TYPE_BOOL:      var.bool_value = (uint8_t)number; break;
-		// case TYPE_STRING:    var.string_value = ()number; break;
+		case TYPE_BOOL:      printf("Cannot assign bool to number\n"); return 2; break;
+		case TYPE_STRING:    printf("Cannot assign string to number\n"); return 2; break;
 	}
 
 	int rval = map_put(
@@ -190,6 +190,41 @@ int assign_boolean(const char *identifier, int bool_value) {
 	return 0;
 }
 
+int get_value(const char *identifier, double *out_value) {
+	Variable var;
+	size_t var_size;
+	{
+		int rval = map_get(
+			variables,
+			identifier, strlen(identifier),
+			&var, &var_size
+		);
+		if (rval){
+			fprintf(stderr, "Variable '%s' has not been declared.\n", identifier);
+			return 1;
+		}
+		else {
+#ifdef DEBUG
+			printf("Found variable: %s of type: %d\n", identifier, var.type);
+#endif
+		}
+	}
+
+	switch(var.type){
+		case TYPE_BYTE:      *out_value = (double) var.byte_value; break;
+		case TYPE_INT:       *out_value = (double) var.int_value; break;
+		case TYPE_UINT:      *out_value = (double) var.int_value; break;
+		case TYPE_LONG:      *out_value = (double) var.long_value; break;
+		case TYPE_ULONG:     *out_value = (double) var.long_value; break;
+		case TYPE_FLOAT:     *out_value = (double) var.float_value; break;
+		case TYPE_DOUBLE:    *out_value = var.double_value; break;
+		case TYPE_BOOL:      printf("Cannot get number from bool.\n"); return 2; break;
+		case TYPE_STRING:    printf("Cannot get number from string.\n"); return 2; break;
+	}
+
+	return 0;
+}
+
 void exit_program(int exit_code) {
 	for (int i = 0; i < variables->length; ++i){
 		void *key = variables->buckets[i].key;
@@ -237,8 +272,10 @@ int main(){
 %type <integer> type
 %type <integer> boolean
 %type <number> NUMBER
+%type <number> expression
 %token UNDERLINE NEWLINE IDENTIFIER NUMBER STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE
 %left '+' '-'
+%left '*' '/' '%' '^'
 
 %%
 
@@ -247,6 +284,7 @@ program
 	| program declaration NEWLINE
 	| program assignment NEWLINE
 	| program command NEWLINE
+	| program expression NEWLINE
 	| program error NEWLINE
 	{
 		printf("Error\n");
@@ -261,7 +299,7 @@ declaration
 		declare_variable(identifier, type);
 		free(identifier);
 	}
-	| IDENTIFIER ':' type '=' NUMBER
+	| IDENTIFIER ':' type '=' expression
 	{
 		char *identifier = $1;
 		int type = $3;
@@ -292,7 +330,7 @@ declaration
 	;
 
 assignment
-	: IDENTIFIER '=' NUMBER
+	: IDENTIFIER '=' expression
 	{
 		char *identifier = $1;
 		double number = $3;
@@ -316,26 +354,90 @@ assignment
 	}
 	;
 
+expression
+	: NUMBER
+	{
+		$$ = $1;
+	}
+	| expression '+' expression
+	{
+		double lval = $1;
+		double rval = $3;
+		double result = lval + rval;
+		$$ = result;
+	}
+	| expression '-' expression
+	{
+		double lval = $1;
+		double rval = $3;
+		double result = lval - rval;
+		$$ = result;
+	}
+	| expression '*' expression
+	{
+		double lval = $1;
+		double rval = $3;
+		double result = lval * rval;
+		$$ = result;
+	}
+	| expression '/' expression
+	{
+		double lval = $1;
+		double rval = $3;
+		double result = lval / rval;
+		$$ = result;
+	}
+	| expression '%' expression
+	{
+		int lval = (int) $1;
+		int rval = (int) $3;
+		double result = (double) (lval % rval);
+		$$ = result;
+	}
+	| expression '^' expression
+	{
+		double lval = $1;
+		double rval = $3;
+		double result = pow(lval, rval);
+		$$ = result;
+	}
+	| '-' expression
+	{
+		$$ = $2 * -1;
+	}
+	| IDENTIFIER
+	{
+		double value;
+		int rval = get_value($1, &value);
+		$$ = value;
+	}
+	| '(' expression ')'
+	{
+		$$ = $2;
+	}
+	;
+
 command
 	: QUIT { exit_program(0); }
 	| EXIT { exit_program(0); }
-	| IDENTIFIER
+	| PRINT IDENTIFIER
 	{
+		char *identifier = $2;
 		Variable var;
 		size_t var_size;
 		{
 			int rval = map_get(
 				variables,
-				(uint8_t*)$1, strlen($1),
-				(uint8_t*)(&var), &var_size
+				identifier, strlen(identifier),
+				(&var), &var_size
 			);
 			if (rval){
-				fprintf(stderr, "Variable '%s' has not been declared.\n", $1);
+				fprintf(stderr, "Variable '%s' has not been declared.\n", identifier);
 				goto command_end;
 			}
 			else {
 #ifdef DEBUG
-				printf("Found variable: %s of type: %d\n", $1, var.type);
+				printf("Found variable: %s of type: %d\n", identifier, var.type);
 #endif
 			}
 		}
@@ -353,7 +455,7 @@ command
 		}
 
 command_end:
-		free($1);
+		free(identifier);
 	}
 	;
 
