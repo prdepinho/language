@@ -2,6 +2,7 @@
 #define __ARRAY_H__
 
 #include <stdlib.h>
+#include <string.h>
 
 /* A self-expanding array of bytes. */
 

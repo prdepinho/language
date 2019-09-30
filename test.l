@@ -1,6 +1,9 @@
 
 %{
 #include <stdio.h>
+#include "hash.h"
+#include "array.h"
+#include "semantics.h"
 #include "test.tab.h"
 %}
 
