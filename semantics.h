@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include "hash.h"
 
+
 typedef enum Type {
 	TYPE_BYTE = 0,  
 	TYPE_INT = 1,
@@ -35,6 +36,10 @@ typedef struct Variable {
 	};
 } Variable;
 
+double get_number(Variable var);
+
+int set_string_literal(Variable *var, const char *string_literal);
+
 int init();
 
 void finalize();
@@ -43,6 +48,8 @@ Map *get_variables();
 
 void declare_variable(const char *identifier, int type);
 
+int assign_variable(const char *identifier, const Variable var);
+
 int assign_number(const char *identifier, double number);
 
 int assign_string_literal(const char* identifier, const char *string_literal);
@@ -50,6 +57,10 @@ int assign_string_literal(const char* identifier, const char *string_literal);
 int assign_boolean(const char *identifier, int bool_value);
 
 int get_value(const char *identifier, double *out_value);
+
+int get_variable(const char *identifier, Variable *var);
+
+void print_variable(const Variable var);
 
 void exit_program(int exit_code);
 

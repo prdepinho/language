@@ -2,6 +2,31 @@
 
 Map *variables = NULL;
 
+double get_number(Variable var) {
+	switch(var.type){ \
+	case TYPE_BYTE:   return (double) var.byte_value; break;
+	case TYPE_INT:    return (double) var.int_value; break;
+	case TYPE_UINT:   return (double) var.uint_value; break;
+	case TYPE_LONG:   return (double) var.long_value; break;
+	case TYPE_ULONG:  return (double) var.ulong_value; break;
+	case TYPE_FLOAT:  return (double) var.float_value; break;
+	case TYPE_DOUBLE: return var.double_value; break;
+	case TYPE_BOOL: return 0.f; break;
+	case TYPE_STRING: return 0.f; break;
+	}
+	return 0.f;
+}
+
+int set_string_literal(Variable *var, const char *string_literal) {
+	size_t string_size = strlen(string_literal);
+	var->type = TYPE_STRING;
+	var->string_value = (char*) malloc(string_size * sizeof(char));
+	if (var->string_value == NULL)
+		return 1;
+	memcpy(var->string_value, string_literal, string_size * sizeof(char));
+	return 0;
+}
+
 int init(){
 	variables = map_new(2);
 	if (variables == NULL) {
@@ -32,6 +57,62 @@ void declare_variable(const char *identifier, int type) {
 		printf("declaration: %d %s\n", type, identifier);
 #endif
 	}
+}
+
+int assign_variable(const char *identifier, const Variable var) {
+	Variable declared_var;
+	size_t var_size;
+	{
+		int rval = map_get(
+			variables,
+			identifier, strlen(identifier),
+			&declared_var, &var_size
+		);
+		if (rval){
+			fprintf(stderr, "Variable '%s' has not been declared.\n", identifier);
+			return 1;
+		}
+	}
+
+	switch(var.type) {
+		case TYPE_BOOL:
+			switch(declared_var.type) {
+				case TYPE_BOOL:      declared_var.bool_value = var.bool_value; break;
+				case TYPE_STRING:    printf("Cannot assign bool to string.\n"); return 2; break;
+				default:			 printf("Cannot assign bool to number.\n"); return 2; break;
+			}
+			break;
+		case TYPE_STRING:
+			switch(declared_var.type) {
+				case TYPE_STRING:    declared_var.string_value = var.string_value; break;
+				case TYPE_BOOL:      printf("Cannot assign string to bool.\n"); return 2; break;
+				default:			 printf("Cannot assign string to number.\n"); return 2; break;
+			}
+			break;
+		default:
+			switch(declared_var.type) {
+				case TYPE_BYTE:      declared_var.byte_value = (uint8_t) get_number(var); break;
+				case TYPE_INT:       declared_var.int_value = (int32_t) get_number(var); break;
+				case TYPE_UINT:      declared_var.int_value = (uint32_t) get_number(var); break;
+				case TYPE_LONG:      declared_var.long_value = (int64_t) get_number(var); break;
+				case TYPE_ULONG:     declared_var.long_value = (uint64_t) get_number(var); break;
+				case TYPE_FLOAT:     declared_var.float_value = (float) get_number(var); break;
+				case TYPE_DOUBLE:    declared_var.double_value = (double) get_number(var); break;
+				case TYPE_BOOL:      printf("Cannot assign number to bool\n"); return 2; break;
+				case TYPE_STRING:    printf("Cannot assign number to string\n"); return 2; break;
+			}
+			break;
+	}
+
+	int rval = map_put(
+		variables,
+		identifier, strlen(identifier),
+		&declared_var, sizeof(Variable)
+	);
+	if (rval) {
+		fprintf(stderr, "out of memory for variables.\n");
+	}
+	return 0;
 }
 
 int assign_number(const char *identifier, double number) {
@@ -170,6 +251,25 @@ int assign_boolean(const char *identifier, int bool_value) {
 	return 0;
 }
 
+int get_variable(const char *identifier, Variable *var) {
+	size_t var_size;
+	int rval = map_get(
+		variables,
+		identifier, strlen(identifier),
+		var, &var_size
+	);
+	if (rval){
+		fprintf(stderr, "Variable '%s' has not been declared.\n", identifier);
+		return 1;
+	}
+	else {
+#ifdef DEBUG
+		printf("Found variable: %s of type: %d\n", identifier, var.type);
+#endif
+	}
+	return 0;
+}
+
 int get_value(const char *identifier, double *out_value) {
 	Variable var;
 	size_t var_size;
@@ -203,6 +303,20 @@ int get_value(const char *identifier, double *out_value) {
 	}
 
 	return 0;
+}
+
+void print_variable(const Variable var) {
+	switch(var.type){
+		case TYPE_BYTE: printf("0x%x\n", var.byte_value); break;
+		case TYPE_INT: printf("%d\n", var.int_value); break;
+		case TYPE_UINT: printf("%u\n", var.int_value); break;
+		case TYPE_LONG: printf("%ld\n", var.long_value); break;
+		case TYPE_ULONG: printf("%lu\n", var.long_value); break;
+		case TYPE_FLOAT: printf("%f\n", var.float_value); break;
+		case TYPE_DOUBLE: printf("%f\n", var.double_value); break;
+		case TYPE_BOOL: printf("%s (%u)\n", var.bool_value ? "true" : "false", var.bool_value); break;
+		case TYPE_STRING: printf("%s\n", var.string_value); break;
+	}
 }
 
 void exit_program(int exit_code) {

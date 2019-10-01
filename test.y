@@ -12,11 +12,11 @@ extern Map *variables;
 int yyparse();
 int yylex();
 
-void yyerror(const char *str){ /* fprintf(stderr, "Error: %s\n", str); */ }
+void yyerror(const char *str) { /* fprintf(stderr, "Error: %s\n", str); */ }
 
-int yywrap(){ return 1; }
+int yywrap() { return 1; }
 
-int main(){
+int main() {
 	if (init()){
 		printf("Map is null.\n");
 		return 1;
@@ -42,13 +42,13 @@ int main(){
 %type <integer> type
 %type <integer> boolean
 %type <number> NUMBER
-%type <number> expression
-%type <variable> test
+%type <variable> expression
 
 %token UNDERLINE NEWLINE IDENTIFIER NUMBER STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE
 
 %left '+' '-'
-%left '*' '/' '%' '^'
+%left '*' '/' '%'
+%left '^'
 
 %%
 
@@ -58,21 +58,13 @@ program
 	| program assignment NEWLINE
 	| program command NEWLINE
 	| program expression NEWLINE
-	| program test NEWLINE
+	{
+		Variable variable = $2;
+		print_variable(variable);
+	}
 	| program error NEWLINE
 	{
 		printf("Error\n");
-	}
-	;
-
-test
-	: UNDERLINE IDENTIFIER
-	{
-		printf("test\n");
-		Variable var;
-		var.type = TYPE_DOUBLE;
-		var.double_value = 0.f;
-		$$ = var;
 	}
 	;
 
@@ -88,28 +80,9 @@ declaration
 	{
 		char *identifier = $1;
 		int type = $3;
-		double number = $5;
+		Variable var = $5;
 		declare_variable(identifier, type);
-		assign_number(identifier, number);
-		free(identifier);
-	}
-	| IDENTIFIER ':' type '=' STRING_LITERAL
-	{
-		char *identifier = $1;
-		int type = $3;
-		char *string_literal = $5;
-		declare_variable(identifier, type);
-		assign_string_literal(identifier, string_literal);
-		free(identifier);
-		free(string_literal);
-	}
-	| IDENTIFIER ':' type '=' boolean
-	{
-		char *identifier = $1;
-		int type = $3;
-		int bool_value = $5;
-		declare_variable(identifier, type);
-		assign_boolean(identifier, bool_value);
+		assign_variable(identifier, var);
 		free(identifier);
 	}
 	;
@@ -118,23 +91,8 @@ assignment
 	: IDENTIFIER '=' expression
 	{
 		char *identifier = $1;
-		double number = $3;
-		assign_number(identifier, number);
-		free(identifier);
-	}
-	| IDENTIFIER '=' STRING_LITERAL
-	{
-		char *identifier = $1;
-		char *string_literal = $3;
-		assign_string_literal(identifier, string_literal);
-		free(identifier);
-		free(string_literal);
-	}
-	| IDENTIFIER '=' boolean
-	{
-		char *identifier = $1;
-		int bool_value = $3;
-		assign_boolean(identifier, bool_value);
+		Variable var = $3;
+		assign_variable(identifier, var);
 		free(identifier);
 	}
 	;
@@ -142,63 +100,159 @@ assignment
 expression
 	: NUMBER
 	{
-		$$ = $1;
+		Variable var;
+		var.type = TYPE_DOUBLE;
+		var.double_value = $1;
+		$$ = var;
 	}
-	| expression '+' expression
+	| STRING_LITERAL
 	{
-		double lval = $1;
-		double rval = $3;
-		double result = lval + rval;
-		$$ = result;
+		Variable var;
+		set_string_literal(&var, $1);
+		free($1);
+		$$ = var;
 	}
-	| expression '-' expression
+	| boolean
 	{
-		double lval = $1;
-		double rval = $3;
-		double result = lval - rval;
-		$$ = result;
-	}
-	| expression '*' expression
-	{
-		double lval = $1;
-		double rval = $3;
-		double result = lval * rval;
-		$$ = result;
-	}
-	| expression '/' expression
-	{
-		double lval = $1;
-		double rval = $3;
-		double result = lval / rval;
-		$$ = result;
-	}
-	| expression '%' expression
-	{
-		int lval = (int) $1;
-		int rval = (int) $3;
-		double result = (double) (lval % rval);
-		$$ = result;
-	}
-	| expression '^' expression
-	{
-		double lval = $1;
-		double rval = $3;
-		double result = pow(lval, rval);
-		$$ = result;
-	}
-	| '-' expression
-	{
-		$$ = $2 * -1;
+		Variable var;
+		var.type = TYPE_BOOL;
+		var.bool_value = $1;
+		$$ = var;
 	}
 	| IDENTIFIER
 	{
-		double value;
-		int rval = get_value($1, &value);
-		$$ = value;
+		Variable var;
+		get_variable($1, &var);
+		free($1);
+		$$ = var;
+	}
+	| '-' expression
+	{
+		Variable var = $2;
+		switch(var.type) {
+		case TYPE_BYTE:      var.byte_value *= -1; break;
+		case TYPE_INT:       var.int_value *= -1; break;
+		case TYPE_UINT:      printf("Cannot have negative uint.\n"); return 1; break;
+		case TYPE_LONG:      var.long_value *= -1; break;
+		case TYPE_ULONG:     printf("Cannot have negative ulong.\n"); return 1; break;
+		case TYPE_FLOAT:     var.float_value *= -1; break;
+		case TYPE_DOUBLE:    var.double_value *= -1; break;
+		case TYPE_BOOL:      printf("Cannot have negative bool.\n"); return 1; break;
+		case TYPE_STRING:    printf("Cannot have negative string.\n"); return 1; break;
+		}
+		$$ = var;
 	}
 	| '(' expression ')'
 	{
 		$$ = $2;
+	}
+	| expression '+' expression
+	{
+		Variable lvar = $1;
+		Variable rvar = $3;
+
+		switch(lvar.type) {
+		case TYPE_BYTE:      lvar.byte_value = (uint8_t) (get_number(lvar) + get_number(rvar)); break;
+		case TYPE_INT:       lvar.int_value = (int32_t) (get_number(lvar) + get_number(rvar)); break;
+		case TYPE_UINT:      lvar.uint_value = (uint32_t) (get_number(lvar) + get_number(rvar)); break;
+		case TYPE_LONG:      lvar.long_value = (int64_t) (get_number(lvar) + get_number(rvar)); break;
+		case TYPE_ULONG:     lvar.ulong_value = (uint64_t) (get_number(lvar) + get_number(rvar)); break;
+		case TYPE_FLOAT:     lvar.float_value = (float) (get_number(lvar) + get_number(rvar)); break;
+		case TYPE_DOUBLE:    lvar.double_value = (double) (get_number(lvar) + get_number(rvar)); break;
+		case TYPE_BOOL:      printf("Cannot operate on bool.\n"); break;
+		case TYPE_STRING:    printf("Cannot operate on string.\n"); break;
+		}
+		$$ = lvar;
+	}
+	| expression '-' expression
+	{
+		Variable lvar = $1;
+		Variable rvar = $3;
+
+		switch(lvar.type) {
+		case TYPE_BYTE:      lvar.byte_value = (uint8_t) (get_number(lvar) - get_number(rvar)); break;
+		case TYPE_INT:       lvar.int_value = (int32_t) (get_number(lvar) - get_number(rvar)); break;
+		case TYPE_UINT:      lvar.uint_value = (uint32_t) (get_number(lvar) - get_number(rvar)); break;
+		case TYPE_LONG:      lvar.long_value = (int64_t) (get_number(lvar) - get_number(rvar)); break;
+		case TYPE_ULONG:     lvar.ulong_value = (uint64_t) (get_number(lvar) - get_number(rvar)); break;
+		case TYPE_FLOAT:     lvar.float_value = (float) (get_number(lvar) - get_number(rvar)); break;
+		case TYPE_DOUBLE:    lvar.double_value = (double) (get_number(lvar) - get_number(rvar)); break;
+		case TYPE_BOOL:      printf("Cannot operate on bool.\n"); break;
+		case TYPE_STRING:    printf("Cannot operate on string.\n"); break;
+		}
+		$$ = lvar;
+	}
+	| expression '*' expression
+	{
+		Variable lvar = $1;
+		Variable rvar = $3;
+
+		switch(lvar.type) {
+		case TYPE_BYTE:      lvar.byte_value = (uint8_t) (get_number(lvar) * get_number(rvar)); break;
+		case TYPE_INT:       lvar.int_value = (int32_t) (get_number(lvar) * get_number(rvar)); break;
+		case TYPE_UINT:      lvar.uint_value = (uint32_t) (get_number(lvar) * get_number(rvar)); break;
+		case TYPE_LONG:      lvar.long_value = (int64_t) (get_number(lvar) * get_number(rvar)); break;
+		case TYPE_ULONG:     lvar.ulong_value = (uint64_t) (get_number(lvar) * get_number(rvar)); break;
+		case TYPE_FLOAT:     lvar.float_value = (float) (get_number(lvar) * get_number(rvar)); break;
+		case TYPE_DOUBLE:    lvar.double_value = (double) (get_number(lvar) * get_number(rvar)); break;
+		case TYPE_BOOL:      printf("Cannot operate on bool.\n"); break;
+		case TYPE_STRING:    printf("Cannot operate on string.\n"); break;
+		}
+		$$ = lvar;
+	}
+	| expression '/' expression
+	{
+		Variable lvar = $1;
+		Variable rvar = $3;
+
+		switch(lvar.type) {
+		case TYPE_BYTE:      lvar.byte_value = (uint8_t) (get_number(lvar) / get_number(rvar)); break;
+		case TYPE_INT:       lvar.int_value = (int32_t) (get_number(lvar) / get_number(rvar)); break;
+		case TYPE_UINT:      lvar.uint_value = (uint32_t) (get_number(lvar) / get_number(rvar)); break;
+		case TYPE_LONG:      lvar.long_value = (int64_t) (get_number(lvar) / get_number(rvar)); break;
+		case TYPE_ULONG:     lvar.ulong_value = (uint64_t) (get_number(lvar) / get_number(rvar)); break;
+		case TYPE_FLOAT:     lvar.float_value = (float) (get_number(lvar) / get_number(rvar)); break;
+		case TYPE_DOUBLE:    lvar.double_value = (double) (get_number(lvar) / get_number(rvar)); break;
+		case TYPE_BOOL:      printf("Cannot operate on bool.\n"); break;
+		case TYPE_STRING:    printf("Cannot operate on string.\n"); break;
+		}
+		$$ = lvar;
+	}
+	| expression '%' expression
+	{
+		Variable lvar = $1;
+		Variable rvar = $3;
+
+		switch(lvar.type) {
+		case TYPE_BYTE:      lvar.byte_value = (uint8_t) ((int) get_number(lvar) % (int) get_number(rvar)); break;
+		case TYPE_INT:       lvar.int_value = (int32_t) ((int) get_number(lvar) % (int) get_number(rvar)); break;
+		case TYPE_UINT:      lvar.uint_value = (uint32_t) ((int) get_number(lvar) % (int) get_number(rvar)); break;
+		case TYPE_LONG:      lvar.long_value = (int64_t) ((int) get_number(lvar) % (int) get_number(rvar)); break;
+		case TYPE_ULONG:     lvar.ulong_value = (uint64_t) ((int) get_number(lvar) % (int) get_number(rvar)); break;
+		case TYPE_FLOAT:     lvar.float_value = (float) ((int) get_number(lvar) % (int) get_number(rvar)); break;
+		case TYPE_DOUBLE:    lvar.double_value = (double) ((int) get_number(lvar) % (int) get_number(rvar)); break;
+		case TYPE_BOOL:      printf("Cannot operate on bool.\n"); break;
+		case TYPE_STRING:    printf("Cannot operate on string.\n"); break;
+		}
+		$$ = lvar;
+	}
+	| expression '^' expression
+	{
+		Variable lvar = $1;
+		Variable rvar = $3;
+
+		switch(lvar.type) {
+		case TYPE_BYTE:      lvar.byte_value = (uint8_t) pow(get_number(lvar), get_number(rvar)); break;
+		case TYPE_INT:       lvar.int_value = (int32_t) pow(get_number(lvar), get_number(rvar)); break;
+		case TYPE_UINT:      lvar.uint_value = (uint32_t) pow(get_number(lvar), get_number(rvar)); break;
+		case TYPE_LONG:      lvar.long_value = (int64_t) pow(get_number(lvar), get_number(rvar)); break;
+		case TYPE_ULONG:     lvar.ulong_value = (uint64_t) pow(get_number(lvar), get_number(rvar)); break;
+		case TYPE_FLOAT:     lvar.float_value = (float) pow(get_number(lvar), get_number(rvar)); break;
+		case TYPE_DOUBLE:    lvar.double_value = (double) pow(get_number(lvar), get_number(rvar)); break;
+		case TYPE_BOOL:      printf("Cannot operate on bool.\n"); break;
+		case TYPE_STRING:    printf("Cannot operate on string.\n"); break;
+		}
+		$$ = lvar;
 	}
 	;
 
