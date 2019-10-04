@@ -42,37 +42,35 @@ void array_delete(Array *array){
 }
 
 
-int array_set(Array *array, int index, void *element){
-	memcpy(array->heap + index * array->data_size, element, array->data_size);
-	return 0;
+void *array_set(Array *array, int index, void *element){
+	return memcpy(array->heap + index * array->data_size, element, array->data_size);
 }
 
-int array_get(Array *array, int index, void *out_element){
-	memcpy(out_element, array->heap + index * array->data_size, array->data_size);
-	return 0;
+void *array_get(Array *array, int index, void *out_element){
+	return memcpy(out_element, array->heap + index * array->data_size, array->data_size);
 }
 
-int array_push(Array *array, void *element){
+size_t array_push(Array *array, void *element){
 	if (array->capacity == array->length){
 		int rval = array_extend(array);
 		if (rval)
-			return 1;
+			return -1;
 	}
 	array_set(array, array->length++, element);
-	return 0;
+	return array->length - 1;
 }
 
-int array_peek(Array *array, void *out_element){
+size_t array_peek(Array *array, void *out_element){
 	if (array->length == 0)
-		return 1;
+		return -1;
 	array_get(array, array->length -1, out_element);
-	return 0;
+	return array->length - 1;
 }
 
-int array_pop(Array *array, void *out_element){
+size_t array_pop(Array *array, void *out_element){
 	if (array->length == 0)
-		return 1;
+		return -1;
 	array_get(array, --array->length, out_element);
-	return 0;
+	return array->length - 1;
 }
 

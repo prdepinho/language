@@ -1,6 +1,6 @@
 
-program: lex.yy.c test.tab.c semantics.o array.o hash.o
-	cc -o program lex.yy.c test.tab.c semantics.o array.o hash.o -lm
+program: lex.yy.c test.tab.c semantics.o array.o hash.o vm.o
+	cc -o program lex.yy.c test.tab.c semantics.o array.o hash.o vm.o -lm
 
 lex.yy.c: test.l
 	flex test.l
@@ -16,6 +16,9 @@ array.o: array.c array.h
 
 hash.o: hash.c hash.h
 	cc -c hash.c
+
+vm.o: vm.c vm.h
+	cc -c vm.c
 
 test: test.c hash.o
 	cc test.c hash.o -o test

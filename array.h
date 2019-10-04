@@ -15,13 +15,25 @@ typedef struct Array {
 
 /* Set initial_length to 0 to use it as a stack. */
 Array *array_new(size_t data_size, size_t initial_length);
+
+/* Delete array. */
 void array_delete(Array *array);
 
-int array_set(Array *array, int index, void *element);
-int array_get(Array *array, int index, void *out_element);
 
-int array_push(Array *array, void *element);
-int array_peek(Array *array, void *out_element);
-int array_pop(Array *array, void *out_element);
+/* Set an element at an index in the array. Return the pointer to it. */
+void *array_set(Array *array, int index, void *element);
+
+/* Get an element at an index in the array. Return the pointer to it. */
+void *array_get(Array *array, int index, void *out_element);
+
+
+/* Push an element to the array. Return the element's index. */
+size_t array_push(Array *array, void *element);
+
+/* Get the element at the end of the array. Return the element's index. */
+size_t array_peek(Array *array, void *out_element);
+
+/* Get and remove the element at the end of the array. Return the element's index. */
+size_t array_pop(Array *array, void *out_element);
 
 #endif /* __array_h__ */
