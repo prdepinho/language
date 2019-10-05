@@ -21,7 +21,7 @@ vm.o: vm.c vm.h
 	cc -c vm.c
 
 test: test.c hash.o
-	cc test.c hash.o -o test
+	cc test.c hash.o array.o vm.o -o test
 
 clean:
 	rm program test.tab.c test.tab.h lex.yy.c *.o

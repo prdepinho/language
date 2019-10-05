@@ -36,7 +36,7 @@ void vm_delete(VM *vm) {
 	free(vm);
 }
 
-int run(VM *vm) {
+int vm_run(VM *vm) {
 	for (vm->cmd_ptr = 0; vm->cmd_ptr < vm->commands->length; vm->cmd_ptr++) {
 		Command cmd;
 		array_get(vm->commands, vm->cmd_ptr, &cmd);
@@ -48,16 +48,16 @@ int run(VM *vm) {
 Addr vm_execute(VM *vm, Command cmd) {
 	switch(cmd.code) {
 	case CMD_SET_BYTE:
-		break;
+		return vm_push_byte(vm, cmd.byte_arg);
 
 	case CMD_SET_UINT:
-		break;
+		return vm_push_uint(vm, cmd.uint_arg);
 
 	case CMD_SET_INT: 
-		break;
+		return vm_push_int(vm, cmd.int_arg);
 
 	case CMD_SET_FLOAT:
-	   break;
+		return vm_push_float(vm, cmd.float_arg);
 
 	case CMD_MALLOC:
 		break;
@@ -66,27 +66,32 @@ Addr vm_execute(VM *vm, Command cmd) {
 		break;
 
 	case CMD_ADD:
-		break;
+		return vm_add(vm, cmd.addr, cmd.addr_arg);
 
 	case CMD_SUB:
-		break;
+		return vm_sub(vm, cmd.addr, cmd.addr_arg);
 
 	case CMD_MULT:
-		break;
+		return vm_mult(vm, cmd.addr, cmd.addr_arg);
 
 	case CMD_DIV:
-		break;
+		return vm_div(vm, cmd.addr, cmd.addr_arg);
 
 	case CMD_JUMP:
-		break;
+		return vm_jump(vm, cmd.addr);
 
 	case CMD_JCOND:
-		break;
+		return vm_jcond(vm, cmd.addr, cmd.addr_arg);
 
-	default:
-		return 1;
+	case CMD_POP:
+		return vm_pop(vm);
+
 	}
 	return 0;
+}
+
+size_t vm_push_cmd(VM *vm, Command cmd) {
+	return array_push(vm->commands, &cmd);
 }
 
 
@@ -524,10 +529,52 @@ Addr vm_jcond(VM *vm, Addr cmd_addr, Addr bool_addr) {
 				vm_jump(vm, cmd_addr);
 			break;
 		case TYPE_FLOAT:
-			if ((Byte) reg.float_value)
+			if ((Int) reg.float_value)
 				vm_jump(vm, cmd_addr);
 			break;
 	}
 	return 0;
 }
 
+
+Addr vm_pop(VM *vm) {
+	Register reg;
+	return array_pop(vm->stack, &reg);
+}
+
+
+Addr vm_get_addr(VM *vm, Addr index) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	return reg.addr_value;
+}
+
+Byte vm_get_byte(VM *vm, Addr index) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	return reg.byte_value;
+}
+
+UInt vm_get_uint(VM *vm, Addr index) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	return reg.uint_value;
+}
+
+Int vm_get_int(VM *vm, Addr index) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	return reg.int_value;
+}
+
+Float vm_get_float(VM *vm, Addr index) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	return reg.float_value;
+}
+
+void *vm_get_ptr(VM *vm, Addr index) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	return reg.ptr_value;
+}

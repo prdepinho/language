@@ -20,10 +20,10 @@ Array *array_new(size_t data_size, size_t initial_length);
 void array_delete(Array *array);
 
 
-/* Set an element at an index in the array. Return the pointer to it. */
+/* Set an element at an index in the array. Return the pointer to it. A negative index works backwards. */
 void *array_set(Array *array, int index, void *element);
 
-/* Get an element at an index in the array. Return the pointer to it. */
+/* Get an element at an index in the array. Return the pointer to it. A negative index works backwards. */
 void *array_get(Array *array, int index, void *out_element);
 
 

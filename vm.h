@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include "array.h"
 
-typedef unsigned long Addr;
+typedef long Addr;
 typedef uint8_t Byte;
-typedef long Int ;
+typedef long Int;
 typedef unsigned long UInt;
 typedef double Float;
 
@@ -23,7 +23,8 @@ enum CommandCode {
 	CMD_MULT = 9,
 	CMD_DIV = 10,
 	CMD_JUMP = 11,
-	CMD_JCOND = 12
+	CMD_JCOND = 12,
+	CMD_POP = 13
 };
 
 enum RegisterType {
@@ -75,6 +76,8 @@ void vm_delete(VM *vm);
 int vm_run(VM *vm);
 Addr vm_execute(VM *vm, Command cmd);
 
+size_t vm_push_cmd(VM *vm, Command cmd);
+
 Addr vm_push_byte(VM *vm, Byte value);
 Addr vm_push_int(VM *vm, Int value);
 Addr vm_push_uint(VM *vm, UInt value);
@@ -85,5 +88,14 @@ Addr vm_mult(VM *vm, Addr lval_addr, Addr rval_addr);
 Addr vm_div(VM *vm, Addr lval_addr, Addr rval_addr);
 Addr vm_jump(VM *vm, Addr addr);
 Addr vm_jcond(VM *vm, Addr true_cmd_addr, Addr bool_addr);
+
+Addr vm_pop(VM *vm);
+
+Addr vm_get_addr(VM *vm, Addr index);
+Byte vm_get_byte(VM *vm, Addr index);
+UInt vm_get_uint(VM *vm, Addr index);
+Int vm_get_int(VM *vm, Addr index);
+Float vm_get_float(VM *vm, Addr index);
+void *vm_get_ptr(VM *vm, Addr index);
 
 #endif /* __VM_H__ */

@@ -2,8 +2,78 @@
 #include <string.h>
 #include "hash.h"
 #include "array.h"
+#include "vm.h"
 
 int main(void){
+
+#if false
+	{
+		VM *vm = vm_new();
+		printf("vm created\n");
+
+		{
+			Addr a = vm_push_int(vm, 42);
+			Addr b = vm_push_int(vm, 58);
+			Addr c = vm_add(vm, a, b);
+
+			Int aval = vm_get_int(vm, a);
+			Int bval = vm_get_int(vm, b);
+			Int cval = vm_get_int(vm, c);
+
+			printf("a: %ld \n", aval);
+			printf("b: %ld \n", bval);
+			printf("c: %ld \n", cval);
+
+			printf("length: %ld\n", vm->stack->length);
+			printf("pop: %ld\n", vm_pop(vm));
+			printf("pop: %ld\n", vm_pop(vm));
+			printf("pop: %ld\n", vm_pop(vm));
+			printf("length: %ld\n", vm->stack->length);
+		}
+
+		vm_delete(vm);
+		printf("vm deleted\n");
+	}
+#endif
+
+	{
+		VM *vm = vm_new();
+
+		Command cmd;
+
+		cmd.code = CMD_SET_INT;
+		cmd.addr = 0;
+		cmd.int_arg = 42;
+		vm_push_cmd(vm, cmd);
+
+		cmd.code = CMD_SET_INT;
+		cmd.addr = 0;
+		cmd.int_arg = 58;
+		vm_push_cmd(vm, cmd);
+
+		cmd.code = CMD_ADD;
+		cmd.addr = -2;
+		cmd.addr_arg = -1;
+		vm_push_cmd(vm, cmd);
+
+		vm_run(vm);
+
+		Int aval = vm_get_int(vm, -3);
+		Int bval = vm_get_int(vm, -2);
+		Int cval = vm_get_int(vm, -1);
+
+		printf("a: %ld \n", aval);
+		printf("b: %ld \n", bval);
+		printf("c: %ld \n", cval);
+
+		printf("length: %ld\n", vm->stack->length);
+		printf("pop: %ld\n", vm_pop(vm));
+		printf("pop: %ld\n", vm_pop(vm));
+		printf("pop: %ld\n", vm_pop(vm));
+		printf("length: %ld\n", vm->stack->length);
+	
+		vm_delete(vm);
+	}
 
 #if false
 	{
@@ -62,6 +132,7 @@ int main(void){
 
 	}
 #endif
+#if false
 	{
 		Map *map = map_new(2);
 		if (map == NULL){
@@ -88,6 +159,7 @@ int main(void){
 			printf("(%d) get map %d: %d\n", rval, key, value);
 		}
 	}
+#endif
 
 #if false
 	{
