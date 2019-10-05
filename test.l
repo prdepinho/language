@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include "hash.h"
 #include "array.h"
-#include "semantics.h"
+#include "vm.h"
+#include "types.h"
 #include "test.tab.h"
 %}
 
@@ -31,7 +32,9 @@ false						{return FALSE;}
 -							{return (int) yytext[0];}
 \.							{return (int) yytext[0];}
 \/							{return (int) yytext[0];}
-((([0-9]*\.)?[0-9]+))		{ yylval.number = atof(yytext); return NUMBER; }
+((([0-9]*\.)+[0-9]+))		{ yylval.float_value = atof(yytext); return FLOAT_LITERAL; }
+(0x[0-9a-f]+)				{ yylval.int_value = strtol(yytext, NULL, 0); return HEX_LITERAL; }
+([0-9]+)					{ yylval.int_value = atol(yytext); return INT_LITERAL; }
 `							{return (int) yytext[0];}
 ~							{return (int) yytext[0];}
 !							{return (int) yytext[0];}

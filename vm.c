@@ -94,37 +94,64 @@ size_t vm_push_cmd(VM *vm, Command cmd) {
 	return array_push(vm->commands, &cmd);
 }
 
+void vm_clear_commands(VM *vm) {
+	vm->commands->length = 0;
+}
 
 Addr vm_push_byte(VM *vm, Byte value) {
 	Register reg;
 	reg.type = TYPE_BYTE;
 	reg.byte_value = value;
-	Addr index = array_push(vm->stack, &reg);
-	return index;
+	return array_push(vm->stack, &reg);
 }
 
 Addr vm_push_int(VM *vm, Int value) {
 	Register reg;
 	reg.type = TYPE_INT;
 	reg.int_value = value;
-	Addr index = array_push(vm->stack, &reg);
-	return index;
+	return array_push(vm->stack, &reg);
 }
 
 Addr vm_push_uint(VM *vm, UInt value) {
 	Register reg;
 	reg.type = TYPE_UINT;
 	reg.uint_value = value;
-	Addr index = array_push(vm->stack, &reg);
-	return index;
+	return array_push(vm->stack, &reg);
 }
 
 Addr vm_push_float(VM *vm, Float value) {
 	Register reg;
 	reg.type = TYPE_FLOAT;
 	reg.float_value = value;
-	size_t index = array_push(vm->stack, &reg);
-	return index;
+	return array_push(vm->stack, &reg);
+}
+
+void vm_set_byte(VM *vm, Addr index, Byte value) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	reg.byte_value = value;
+	array_set(vm->stack, index, &reg);
+}
+
+void vm_set_uint(VM *vm, Addr index, UInt value) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	reg.uint_value = value;
+	array_set(vm->stack, index, &reg);
+}
+
+void vm_set_int(VM *vm, Addr index, Int value) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	reg.int_value = value;
+	array_set(vm->stack, index, &reg);
+}
+
+void vm_set_float(VM *vm, Addr index, Float value) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	reg.float_value = value;
+	array_set(vm->stack, index, &reg);
 }
 
 Addr vm_add(VM *vm, Addr lval_addr, Addr rval_addr) {
@@ -540,6 +567,12 @@ Addr vm_jcond(VM *vm, Addr cmd_addr, Addr bool_addr) {
 Addr vm_pop(VM *vm) {
 	Register reg;
 	return array_pop(vm->stack, &reg);
+}
+
+Register vm_get_register(VM *vm, Addr index) {
+	Register reg;
+	array_get(vm->stack, index, &reg);
+	return reg;
 }
 
 

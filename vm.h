@@ -4,12 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "array.h"
-
-typedef long Addr;
-typedef uint8_t Byte;
-typedef long Int;
-typedef unsigned long UInt;
-typedef double Float;
+#include "types.h"
 
 enum CommandCode {
 	CMD_SET_BYTE = 1,
@@ -75,13 +70,19 @@ void vm_delete(VM *vm);
 
 int vm_run(VM *vm);
 Addr vm_execute(VM *vm, Command cmd);
-
 size_t vm_push_cmd(VM *vm, Command cmd);
+void vm_clear_commands(VM *vm);
 
 Addr vm_push_byte(VM *vm, Byte value);
 Addr vm_push_int(VM *vm, Int value);
 Addr vm_push_uint(VM *vm, UInt value);
 Addr vm_push_float(VM *vm, Float value);
+
+void vm_set_byte(VM *vm, Addr index, Byte value);
+void vm_set_int(VM *vm, Addr index, Int value);
+void vm_set_uint(VM *vm, Addr index, UInt value);
+void vm_set_float(VM *vm, Addr index, Float value);
+
 Addr vm_add(VM *vm, Addr lval_addr, Addr rval_addr);
 Addr vm_sub(VM *vm, Addr lval_addr, Addr rval_addr);
 Addr vm_mult(VM *vm, Addr lval_addr, Addr rval_addr);
@@ -91,6 +92,7 @@ Addr vm_jcond(VM *vm, Addr true_cmd_addr, Addr bool_addr);
 
 Addr vm_pop(VM *vm);
 
+Register vm_get_register(VM *vm, Addr index);
 Addr vm_get_addr(VM *vm, Addr index);
 Byte vm_get_byte(VM *vm, Addr index);
 UInt vm_get_uint(VM *vm, Addr index);
