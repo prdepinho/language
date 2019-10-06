@@ -11,6 +11,13 @@
 Map *variables;
 VM *vm;
 size_t vcount;
+Addr null_addr;
+
+void clean_stack() {
+	for (Addr i = vm->stack->length; i > vcount; i--) {
+		vm_pop(vm);
+	}
+}
 
 int yyparse();
 int yylex();
@@ -21,7 +28,7 @@ int yywrap() { return 1; }
 
 int main() {
 	int rval = 0;
-	vcount = 0;
+	vcount = 1;
 	variables = NULL;
 	vm = NULL;
 
@@ -39,6 +46,8 @@ int main() {
 		goto main_end;
 	}
 
+	null_addr = vm_push_int(vm, 0);
+
 	yyparse();
 
 main_end:
@@ -55,8 +64,8 @@ main_end:
 	Int int_value;
 	Float float_value;
 	Byte byte_value;
+	Addr addr_value;
 	char *str;
-	Register reg;
 }
 
 %type <str> IDENTIFIER
@@ -66,9 +75,9 @@ main_end:
 %type <int_value> INT_LITERAL
 %type <float_value> FLOAT_LITERAL
 %type <int_value> HEX_LITERAL
-%type <reg> expression
+%type <addr_value> expression
 
-%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE 
+%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS
 %left '+' '-'
 %left '*' '/' '%'
 %left '^'
@@ -78,25 +87,36 @@ main_end:
 program
 	: %empty
 	| program declaration NEWLINE
+	{
+		vm_run(vm);
+		clean_stack();
+	}
 	| program assignment NEWLINE
+	{
+		vm_run(vm);
+		clean_stack();
+	}
 	| program command NEWLINE
 	| program expression NEWLINE
 	{
-		Register reg = $2;
+		vm_run(vm);
+		Addr addr = $2;
+		Register reg = vm_get(vm, addr);
 		switch (reg.type) {
 		case TYPE_BYTE:
-			printf("byte expression: %d\n", reg.byte_value);
+			printf("%d\n", reg.byte_value);
 			break;
 		case TYPE_UINT:
-			printf("uint expression: %lu\n", reg.uint_value);
+			printf("%lu\n", reg.uint_value);
 			break;
 		case TYPE_INT:
-			printf("int expression: %ld\n", reg.int_value);
+			printf("%ld\n", reg.int_value);
 			break;
 		case TYPE_FLOAT:
-			printf("float expression: %f\n", reg.float_value);
+			printf("%f\n", reg.float_value);
 			break;
 		}
+		clean_stack();
 	}
 	| program error NEWLINE
 	{
@@ -107,136 +127,272 @@ program
 declaration
 	: IDENTIFIER ':' type
 	{
-		// char *identifier = $1;
-		// int type = $3;
+		char *identifier = $1;
+		int type = $3;
 
-		// if (map_put (
-		// 	variables,
-		// 	identifier, strlen(identifier),
-		// 	&vcount++, sizeof(vcount)
-		// ))
-		// {
-		// 	fprintf(stderr, "out of memory");
-		// 	return 1;
-		// }
+		map_put (
+			variables,
+			identifier, strlen(identifier),
+			&vcount, sizeof(vcount)
+		);
+		vcount++;
 
-		// Command cmd;
-		// switch (type) {
-		// case TYPE_BYTE:
-		// 	cmd.code = CMD_SET_BYTE;
-		// 	break;
-		// case TYPE_UINT:
-		// 	cmd.code = CMD_SET_UINT;
-		// 	break;
-		// case TYPE_INT:
-		// 	cmd.code = CMD_SET_INT;
-		// 	break;
-		// case TYPE_FLOAT:
-		// 	cmd.code = CMD_SET_FLOAT;
-		// 	break;
-		// }
-		// vm_push_command(vm, cmd);
+		Command cmd;
+		switch (type) {
+		case TYPE_BYTE:
+			cmd.code = CMD_SET_BYTE;
+			cmd.addr = vm_push_byte(vm, 0);
+			cmd.byte_arg = 0;
+			break;
+		case TYPE_UINT:
+			cmd.code = CMD_SET_UINT;
+			cmd.addr = vm_push_uint(vm, 0);
+			cmd.uint_arg = 0;
+			break;
+		case TYPE_INT:
+			cmd.code = CMD_SET_INT;
+			cmd.addr = vm_push_int(vm, 0);
+			cmd.int_arg = 0;
+			break;
+		case TYPE_FLOAT:
+			cmd.code = CMD_SET_FLOAT;
+			cmd.addr = vm_push_float(vm, 0.0);
+			cmd.float_arg = 0.0;
+			break;
+		}
+		vm_push_cmd(vm, cmd);
 
-		// free(identifier);
+		free(identifier);
 	}
 	| IDENTIFIER ':' type '=' expression
 	{
-		// char *identifier = $1;
-		// int type = $3;
-		// Variable var = $5;
+		char *identifier = $1;
+		int type = $3;
+		Addr rregaddr = $5;
 
-		// map_put (
-		// 	variables,
-		// 	identifier, strlen(identifier),
-		// 	&vcount++, sizeof(vcount)
-		// )
+		map_put (
+			variables,
+			identifier, strlen(identifier),
+			&vcount, sizeof(vcount)
+		);
 
-		// Command cmd;
-		// switch (type) {
-		// case TYPE_BYTE:
-		// 	cmd.code = CMD_SET_BYTE;
-		// 	cmd.byte_arg = var;
-		// 	break;
-		// case TYPE_UINT:
-		// 	cmd.code = CMD_SET_UINT;
-		// 	cmd.uint_arg = var;
-		// 	break;
-		// case TYPE_INT:
-		// 	cmd.code = CMD_SET_INT;
-		// 	cmd.int_arg = var;
-		// 	break;
-		// case TYPE_FLOAT:
-		// 	cmd.code = CMD_SET_FLOAT;
-		// 	cmd.float_arg = var;
-		// 	break;
-		// }
-		// vm_push_command(vm, cmd);
+		Register lreg = vm_get(vm, vcount);
+		Register rreg = vm_get(vm, rregaddr);
 
-		// free(identifier);
+		vcount++;
+
+		Command cmd;
+		switch (lreg.type) {
+		case TYPE_BYTE:
+			cmd.code = CMD_SET_BYTE;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.addr = vm_push_byte(vm, 0);
+				cmd.byte_arg = rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.addr = vm_push_byte(vm, 0);
+				cmd.byte_arg = (Byte) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.addr = vm_push_byte(vm, 0);
+				cmd.byte_arg = (Byte) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.addr = vm_push_byte(vm, 0);
+				cmd.byte_arg = (Byte) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_UINT:
+			cmd.code = CMD_SET_UINT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.addr = vm_push_uint(vm, 0);
+				cmd.uint_arg = (UInt) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.addr = vm_push_uint(vm, 0);
+				cmd.uint_arg = rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.addr = vm_push_uint(vm, 0);
+				cmd.uint_arg = (UInt) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.addr = vm_push_uint(vm, 0);
+				cmd.uint_arg = (UInt) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_INT:
+			cmd.code = CMD_SET_INT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.addr = vm_push_int(vm, 0);
+				cmd.int_arg = (Int) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.addr = vm_push_int(vm, 0);
+				cmd.int_arg = (Int) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.addr = vm_push_int(vm, 0);
+				cmd.int_arg = rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.addr = vm_push_int(vm, 0);
+				cmd.int_arg = (Int) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_FLOAT:
+			cmd.code = CMD_SET_FLOAT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.addr = vm_push_float(vm, 0.0);
+				cmd.float_arg = (Float) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.addr = vm_push_float(vm, 0.0);
+				cmd.float_arg = (Float) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.addr = vm_push_float(vm, 0.0);
+				cmd.float_arg = (Float) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.addr = vm_push_float(vm, 0.0);
+				cmd.float_arg = rreg.float_value;
+				break;
+			}
+			break;
+		}
+		vm_push_cmd(vm, cmd);
+
+		free(identifier);
 	}
 	;
 
 assignment
 	: IDENTIFIER '=' expression
 	{
-		// char *identifier = $1;
-		// Variable var = $3;
+		char *identifier = $1;
+		Addr rregaddr = $3;
 
-		// size_t index;
-		// map_get (
-		// 	variables,
-		// 	identifier, strlen(identifier),
-		// 	&index, sizeof(index)
-		// )
+		Addr lregaddr;
+		size_t size;
+		if (map_get (
+			variables,
+			identifier, strlen(identifier),
+			&lregaddr, &size
+		))
+		{
+			printf("Identifier '%s' undeclared.\n", identifier);
+			goto assignment_end;
+		}
 
-		// Register reg = vm_get_register(vm, index);
+		Register lreg = vm_get(vm, lregaddr);
+		Register rreg = vm_get(vm, rregaddr);
 
-		// Command cmd;
-		// switch (reg.type) {
-		// case TYPE_BYTE:
-		// 	cmd.code = CMD_SET_BYTE;
-		// 	cmd.byte_arg = var;
-		// 	break;
-		// case TYPE_UINT:
-		// 	cmd.code = CMD_SET_UINT;
-		// 	cmd.uint_arg = var;
-		// 	break;
-		// case TYPE_INT:
-		// 	cmd.code = CMD_SET_INT;
-		// 	cmd.int_arg = var;
-		// 	break;
-		// case TYPE_FLOAT:
-		// 	cmd.code = CMD_SET_FLOAT;
-		// 	cmd.float_arg = var;
-		// 	break;
-		// }
-		// vm_push_command(vm, cmd);
+		Command cmd;
+		cmd.addr = lregaddr;
 
-		// free(identifier);
+		switch (lreg.type) {
+		case TYPE_BYTE:
+			cmd.code = CMD_SET_BYTE;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.byte_arg = rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.byte_arg = (Byte) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.byte_arg = (Byte) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.byte_arg = (Byte) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_UINT:
+			cmd.code = CMD_SET_UINT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.uint_arg = (UInt) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.uint_arg = rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.uint_arg = (UInt) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.uint_arg = (UInt) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_INT:
+			cmd.code = CMD_SET_INT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.int_arg = (Int) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.int_arg = (Int) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.int_arg = rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.int_arg = (Int) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_FLOAT:
+			cmd.code = CMD_SET_FLOAT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.float_arg = (Float) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.float_arg = (Float) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.float_arg = (Float) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.float_arg = rreg.float_value;
+				break;
+			}
+			break;
+		}
+		vm_push_cmd(vm, cmd);
+
+assignment_end:
+		free(identifier);
 	}
 	;
 
 expression
 	: INT_LITERAL
 	{
-		Register reg;
-		reg.type = TYPE_INT;
-		reg.int_value = $1;
-		$$ = reg;
+		$$ = vm_push_int(vm, $1);
 	}
 	| FLOAT_LITERAL
 	{
-		Register reg;
-		reg.type = TYPE_FLOAT;
-		reg.float_value = $1;
-		$$ = reg;
+		$$ = vm_push_float(vm, $1);
 	}
 	| HEX_LITERAL
 	{
-		Register reg;
-		reg.type = TYPE_INT;
-		reg.int_value = $1;
-		$$ = reg;
+		$$ = vm_push_int(vm, $1);
 	}
 	| STRING_LITERAL
 	{
@@ -254,29 +410,35 @@ expression
 	}
 	| IDENTIFIER
 	{
-		// Variable var;
-		// get_variable($1, &var);
-		free($1);
-		// $$ = var;
+		char *identifier = $1;
+		Addr addr;
+
+		size_t size;
+		if (map_get (
+			variables,
+			identifier, strlen(identifier),
+			&addr, &size
+		))
+		{
+			printf("Identifier '%s' undeclared.\n", identifier);
+			addr = null_addr;
+		}
+
+		free(identifier);
+		$$ = addr;
 	}
 	| '-' expression
 	{
-		Register reg = $2;
-		switch (reg.type) {
-		case TYPE_BYTE:
-			reg.byte_value *= -1;
-			break;
-		case TYPE_UINT:
-			reg.uint_value *= -1;
-			break;
-		case TYPE_INT:
-			reg.int_value *= -1;
-			break;
-		case TYPE_FLOAT:
-			reg.float_value *= -1;
-			break;
-		}
-		$$ = reg;
+		Addr addr = $2;
+
+		Command cmd;
+		cmd.code = CMD_MULT;
+		cmd.addr = addr;
+		cmd.addr_arg = vm_push_int(vm, -1);
+		cmd.raddr = vm_push_int(vm, 0);
+		vm_push_cmd(vm, cmd);
+
+		$$ = cmd.raddr;
 	}
 	| '(' expression ')'
 	{
@@ -284,36 +446,65 @@ expression
 	}
 	| expression '+' expression
 	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+
+		Command cmd;
+		cmd.code = CMD_ADD;
+		cmd.addr = lvaladdr;
+		cmd.addr_arg = rvaladdr;
+		cmd.raddr = vm_push_int(vm, 0);
+		vm_push_cmd(vm, cmd);
+
+		$$ = cmd.raddr;
 	}
 	| expression '-' expression
 	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+
+		Command cmd;
+		cmd.code = CMD_SUB;
+		cmd.addr = lvaladdr;
+		cmd.addr_arg = rvaladdr;
+		cmd.raddr = vm_push_int(vm, 0);
+		vm_push_cmd(vm, cmd);
+
+		$$ = cmd.raddr;
 	}
 	| expression '*' expression
 	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+
+		Command cmd;
+		cmd.code = CMD_MULT;
+		cmd.addr = lvaladdr;
+		cmd.addr_arg = rvaladdr;
+		cmd.raddr = vm_push_int(vm, 0);
+		vm_push_cmd(vm, cmd);
+
+		$$ = cmd.raddr;
 	}
 	| expression '/' expression
 	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+
+		Command cmd;
+		cmd.code = CMD_DIV;
+		cmd.addr = lvaladdr;
+		cmd.addr_arg = rvaladdr;
+		cmd.raddr = vm_push_int(vm, 0);
+		vm_push_cmd(vm, cmd);
+
+		$$ = cmd.raddr;
 	}
 	| expression '%' expression
 	{
 	}
 	| expression '^' expression
 	{
-		// Variable lvar = $1;
-		// Variable rvar = $3;
-
-		// switch(lvar.type) {
-		// case TYPE_BYTE:      lvar.byte_value = (uint8_t) pow(get_number(lvar), get_number(rvar)); break;
-		// case TYPE_INT:       lvar.int_value = (int32_t) pow(get_number(lvar), get_number(rvar)); break;
-		// case TYPE_UINT:      lvar.uint_value = (uint32_t) pow(get_number(lvar), get_number(rvar)); break;
-		// case TYPE_LONG:      lvar.long_value = (int64_t) pow(get_number(lvar), get_number(rvar)); break;
-		// case TYPE_ULONG:     lvar.ulong_value = (uint64_t) pow(get_number(lvar), get_number(rvar)); break;
-		// case TYPE_FLOAT:     lvar.float_value = (float) pow(get_number(lvar), get_number(rvar)); break;
-		// case TYPE_DOUBLE:    lvar.double_value = (double) pow(get_number(lvar), get_number(rvar)); break;
-		// case TYPE_BOOL:      printf("Cannot operate on bool.\n"); break;
-		// case TYPE_STRING:    printf("Cannot operate on string.\n"); break;
-		// }
-		// $$ = lvar;
 	}
 	;
 
@@ -328,6 +519,108 @@ command
 	}
 	| PRINT IDENTIFIER
 	{
+		char *identifier = $2;
+		Addr addr;
+
+		size_t size;
+		if (map_get (
+			variables,
+			identifier, strlen(identifier),
+			&addr, &size
+		))
+		{
+			printf("Identifier '%s' undeclared.\n", identifier);
+			goto print_end;
+		}
+
+		Register reg = vm_get(vm, addr);
+		printf("%s (%li): ", identifier, addr);
+		switch (reg.type) {
+		case TYPE_BYTE:
+			printf("%d\n", reg.byte_value);
+			break;
+		case TYPE_UINT:
+			printf("%lu\n", reg.uint_value);
+			break;
+		case TYPE_INT:
+			printf("%ld\n", reg.int_value);
+			break;
+		case TYPE_FLOAT:
+			printf("%f\n", reg.float_value);
+			break;
+		}
+print_end:;
+
+	}
+	| STACK
+	{
+		for (int i = 0; i < vm->stack->length; i++) {
+			printf("%d: ", i);
+			Register reg = vm_get(vm, i);
+			switch (reg.type) {
+			case TYPE_BYTE:
+				printf("(byte) %d\n", reg.byte_value);
+				break;
+			case TYPE_UINT:
+				printf("(uint) %lu\n", reg.uint_value);
+				break;
+			case TYPE_INT:
+				printf("(int) %ld\n", reg.int_value);
+				break;
+			case TYPE_FLOAT:
+				printf("(float) %f\n", reg.float_value);
+				break;
+			}
+		}
+		printf("Total: %lu\n", vm->stack->length);
+	}
+	| COMMANDS
+	{
+		for (int i = 0; i < vm->commands->length; i++) {
+			if (i == vm->cmd_ptr)
+				printf("> ");
+			printf("%d: ", i);
+			Command cmd;
+			array_get(vm->commands, i, &cmd);
+			switch (cmd.code) {
+			case CMD_SET_BYTE:
+				printf("set byte");
+				break;
+			case CMD_SET_UINT:
+				printf("set uint\n");
+				break;
+			case CMD_SET_INT:
+				printf("set int\n");
+				break;
+			case CMD_SET_FLOAT:
+				printf("set float\n");
+				break;
+			case CMD_ADD:
+				printf("add\n");
+				break;
+			case CMD_SUB:
+				printf("sub\n");
+				break;
+			case CMD_MULT:
+				printf("mult\n");
+				break;
+			case CMD_DIV:
+				printf("div\n");
+				break;
+			case CMD_JUMP:
+				printf("jump\n");
+				break;
+			case CMD_JCOND:
+				printf("jcond\n");
+				break;
+			case CMD_POP:
+				printf("pop\n");
+				break;
+			}
+		}
+		if (vm->cmd_ptr == vm->commands->length)
+			printf(">\n");
+		printf("Total: %lu\n", vm->commands->length);
 	}
 	;
 

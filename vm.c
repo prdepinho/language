@@ -1,4 +1,5 @@
 #include "vm.h"
+#include <stdio.h>
 
 VM *vm_new() {
 	VM *vm = NULL;
@@ -37,10 +38,11 @@ void vm_delete(VM *vm) {
 }
 
 int vm_run(VM *vm) {
-	for (vm->cmd_ptr = 0; vm->cmd_ptr < vm->commands->length; vm->cmd_ptr++) {
+	while (vm->cmd_ptr < vm->commands->length) {
 		Command cmd;
 		array_get(vm->commands, vm->cmd_ptr, &cmd);
 		vm_execute(vm, cmd);
+		vm->cmd_ptr++;
 	}
 	return 0;
 }
@@ -48,16 +50,40 @@ int vm_run(VM *vm) {
 Addr vm_execute(VM *vm, Command cmd) {
 	switch(cmd.code) {
 	case CMD_SET_BYTE:
-		return vm_push_byte(vm, cmd.byte_arg);
+		{
+		Register reg;
+		reg.type = TYPE_BYTE;
+		reg.byte_value = cmd.byte_arg;
+		vm_set(vm, cmd.addr, reg);
+		break;
+		}
 
 	case CMD_SET_UINT:
-		return vm_push_uint(vm, cmd.uint_arg);
+		{
+		Register reg;
+		reg.type = TYPE_UINT;
+		reg.uint_value = cmd.uint_arg;
+		vm_set(vm, cmd.addr, reg);
+		break;
+		}
 
 	case CMD_SET_INT: 
-		return vm_push_int(vm, cmd.int_arg);
+		{
+		Register reg;
+		reg.type = TYPE_INT;
+		reg.int_value = cmd.int_arg;
+		vm_set(vm, cmd.addr, reg);
+		break;
+		}
 
 	case CMD_SET_FLOAT:
-		return vm_push_float(vm, cmd.float_arg);
+		{
+		Register reg;
+		reg.type = TYPE_FLOAT;
+		reg.float_value = cmd.float_arg;
+		vm_set(vm, cmd.addr, reg);
+		break;
+		}
 
 	case CMD_MALLOC:
 		break;
@@ -66,16 +92,16 @@ Addr vm_execute(VM *vm, Command cmd) {
 		break;
 
 	case CMD_ADD:
-		return vm_add(vm, cmd.addr, cmd.addr_arg);
+		return vm_add(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
 
 	case CMD_SUB:
-		return vm_sub(vm, cmd.addr, cmd.addr_arg);
+		return vm_sub(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
 
 	case CMD_MULT:
-		return vm_mult(vm, cmd.addr, cmd.addr_arg);
+		return vm_mult(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
 
 	case CMD_DIV:
-		return vm_div(vm, cmd.addr, cmd.addr_arg);
+		return vm_div(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
 
 	case CMD_JUMP:
 		return vm_jump(vm, cmd.addr);
@@ -84,13 +110,14 @@ Addr vm_execute(VM *vm, Command cmd) {
 		return vm_jcond(vm, cmd.addr, cmd.addr_arg);
 
 	case CMD_POP:
-		return vm_pop(vm);
+		vm_pop(vm);
+		break;
 
 	}
 	return 0;
 }
 
-size_t vm_push_cmd(VM *vm, Command cmd) {
+Addr vm_push_cmd(VM *vm, Command cmd) {
 	return array_push(vm->commands, &cmd);
 }
 
@@ -154,14 +181,13 @@ void vm_set_float(VM *vm, Addr index, Float value) {
 	array_set(vm->stack, index, &reg);
 }
 
-Addr vm_add(VM *vm, Addr lval_addr, Addr rval_addr) {
+Addr vm_add(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
 	Register lval;
 	Register rval;
 	Register result;
 	array_get(vm->stack, lval_addr, &lval);
 	array_get(vm->stack, rval_addr, &rval);
 
-	// make the addition
 	switch (lval.type) {
 		case TYPE_BYTE:
 			switch (rval.type) {
@@ -245,18 +271,17 @@ Addr vm_add(VM *vm, Addr lval_addr, Addr rval_addr) {
 			break;
 	}
 
-	Addr index = array_push(vm->stack, &result);
-	return index;
+	array_set(vm->stack, raddr, &result);
+	return raddr;
 }
 
-Addr vm_sub(VM *vm, Addr lval_addr, Addr rval_addr) {
+Addr vm_sub(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
 	Register lval;
 	Register rval;
 	Register result;
 	array_get(vm->stack, lval_addr, &lval);
 	array_get(vm->stack, rval_addr, &rval);
 
-	// make the addition
 	switch (lval.type) {
 		case TYPE_BYTE:
 			switch (rval.type) {
@@ -340,18 +365,17 @@ Addr vm_sub(VM *vm, Addr lval_addr, Addr rval_addr) {
 			break;
 	}
 
-	Addr index = array_push(vm->stack, &result);
-	return index;
+	array_set(vm->stack, raddr, &result);
+	return raddr;
 }
 
-Addr vm_mult(VM *vm, Addr lval_addr, Addr rval_addr) {
+Addr vm_mult(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
 	Register lval;
 	Register rval;
 	Register result;
 	array_get(vm->stack, lval_addr, &lval);
 	array_get(vm->stack, rval_addr, &rval);
 
-	// make the addition
 	switch (lval.type) {
 		case TYPE_BYTE:
 			switch (rval.type) {
@@ -435,18 +459,17 @@ Addr vm_mult(VM *vm, Addr lval_addr, Addr rval_addr) {
 			break;
 	}
 
-	Addr index = array_push(vm->stack, &result);
-	return index;
+	array_set(vm->stack, raddr, &result);
+	return raddr;
 }
 
-Addr vm_div(VM *vm, Addr lval_addr, Addr rval_addr) {
+Addr vm_div(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
 	Register lval;
 	Register rval;
 	Register result;
 	array_get(vm->stack, lval_addr, &lval);
 	array_get(vm->stack, rval_addr, &rval);
 
-	// make the addition
 	switch (lval.type) {
 		case TYPE_BYTE:
 			switch (rval.type) {
@@ -530,8 +553,8 @@ Addr vm_div(VM *vm, Addr lval_addr, Addr rval_addr) {
 			break;
 	}
 
-	Addr index = array_push(vm->stack, &result);
-	return index;
+	array_set(vm->stack, raddr, &result);
+	return raddr;
 }
 
 Addr vm_jump(VM *vm, Addr addr) {
@@ -564,15 +587,20 @@ Addr vm_jcond(VM *vm, Addr cmd_addr, Addr bool_addr) {
 }
 
 
-Addr vm_pop(VM *vm) {
+Register vm_pop(VM *vm) {
 	Register reg;
-	return array_pop(vm->stack, &reg);
+	array_pop(vm->stack, &reg);
+	return reg;
 }
 
-Register vm_get_register(VM *vm, Addr index) {
+Register vm_get(VM *vm, Addr index) {
 	Register reg;
 	array_get(vm->stack, index, &reg);
 	return reg;
+}
+
+void vm_set(VM *vm, Addr index, Register reg) {
+	array_set(vm->stack, index, &reg);
 }
 
 

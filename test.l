@@ -23,6 +23,8 @@ bool						{return BOOL;}
 string						{return STRING;}
 pure						{return PURE;}
 print						{return PRINT;}
+stack						{return STACK;}
+commands					{return COMMANDS;}
 true						{return TRUE;}
 false						{return FALSE;}
 [ \t]+						{/* ignore return WHITESPACE; */}
