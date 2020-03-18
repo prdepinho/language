@@ -1,0 +1,8 @@
+
+a:int = 10
+b:float = 3.14
+c:float = a+b
+
+print a
+print b
+print c

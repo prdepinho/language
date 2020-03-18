@@ -319,7 +319,7 @@ void print_variable(const Variable var) {
 	}
 }
 
-void exit_program(int exit_code) {
+void _exit_program(int exit_code) {
 	for (int i = 0; i < variables->length; ++i){
 		void *key = variables->buckets[i].key;
 		if(key != 0){

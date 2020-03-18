@@ -8,6 +8,8 @@
 #include "vm.h"
 #include "types.h"
 
+extern FILE *yyin;
+
 Map *variables;
 VM *vm;
 size_t vcount;
@@ -19,14 +21,33 @@ void clean_stack() {
 	}
 }
 
+void exit_program(int status_code) {
+	if (variables != NULL)
+		map_delete(variables);
+	if (vm != NULL)
+		vm_delete(vm);
+	exit(status_code);
+}
+
 int yyparse();
 int yylex();
 
 void yyerror(const char *str) { /* fprintf(stderr, "Error: %s\n", str); */ }
 
-int yywrap() { return 1; }
+int yywrap() { 
+	fclose(yyin);
+	return 1; 
+}
 
-int main() {
+int main(int argc, const char **argv) {
+	// arguments
+	if (argc > 1) {
+		printf("%s\n", argv[1]);
+		yyin = fopen(argv[1], "r");
+	}
+
+	// initialization
+
 	int rval = 0;
 	vcount = 1;
 	variables = NULL;
@@ -51,10 +72,7 @@ int main() {
 	yyparse();
 
 main_end:
-	if (variables != NULL)
-		map_delete(variables);
-	if (vm != NULL)
-		vm_delete(vm);
+	exit_program(rval);
 	return rval;
 }
 
@@ -122,7 +140,27 @@ program
 	{
 		printf("Error\n");
 	}
+	| program label NEWLINE
+	| program NEWLINE
 	;
+
+label
+	: IDENTIFIER ':'
+	{
+		char *identifier = $1;
+
+		map_put (
+			variables,
+			identifier, strlen(identifier),
+			&vcount, sizeof(vcount)
+		);
+		vcount++;
+
+		Command cmd;
+		vm_push_cmd(vm, cmd);
+
+		free(identifier);
+	}
 
 declaration
 	: IDENTIFIER ':' type
@@ -509,14 +547,8 @@ expression
 	;
 
 command
-	: QUIT 
-	{
-		exit(0);
-	}
-	| EXIT
-	{
-		exit(0);
-	}
+	: QUIT { exit_program(0); }
+	| EXIT { exit_program(0); }
 	| PRINT IDENTIFIER
 	{
 		char *identifier = $2;

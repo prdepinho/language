@@ -62,6 +62,6 @@ int get_variable(const char *identifier, Variable *var);
 
 void print_variable(const Variable var);
 
-void exit_program(int exit_code);
+void _exit_program(int exit_code);
 
 #endif /* __semantics_h__ */
