@@ -7,19 +7,19 @@
 #include "types.h"
 
 enum CommandCode {
-	CMD_SET_BYTE = 1,
-	CMD_SET_INT = 2,
-	CMD_SET_UINT = 3,
-	CMD_SET_FLOAT = 4,
-	CMD_MALLOC = 5,
-	CMD_FREE = 6,
-	CMD_ADD = 7,
-	CMD_SUB = 8,
-	CMD_MULT = 9,
-	CMD_DIV = 10,
-	CMD_JUMP = 11,
-	CMD_JCOND = 12,
-	CMD_POP = 13
+	CMD_SET_BYTE = 1,	// Set byte_arg to addr.
+	CMD_SET_INT = 2,	// Set int_arg to addr.
+	CMD_SET_UINT = 3,	// Set uint_arg to addr.
+	CMD_SET_FLOAT = 4,	// Set float_arg to addr.
+	CMD_MALLOC = 5,		// Malloc.
+	CMD_FREE = 6,		// Free.
+	CMD_ADD = 7,		// Set to raddr the sum of values in addr and addr_arg.
+	CMD_SUB = 8,		// Set to raddr the difference of values in addr and addr_arg.	
+	CMD_MULT = 9,		// Set to raddr the product of values in addr and addr_arg.
+	CMD_DIV = 10,		// Set to raddr the quotient of values in addr and addr_arg.
+	CMD_JUMP = 11,		// Set the cmd_ptr of the virtual machine to addr.
+	CMD_JCOND = 12,		// Like jump, but only if the value of addr_arg is true.
+	CMD_POP = 13		// Pop a value in the stack.
 };
 
 enum RegisterType {
@@ -32,9 +32,9 @@ enum RegisterType {
 };
 
 typedef struct Command {
-	Byte code;
-	Addr addr;
-	union {
+	Byte code;				// Command code in CommandCode enum.
+	Addr addr;				// The first argument. An address.
+	union {					// The second argument. An address, usually, but may also be a value.
 		Addr addr_arg;
 		void *ptr_arg;
 		Byte byte_arg;
@@ -42,13 +42,13 @@ typedef struct Command {
 		Int int_arg;
 		Float float_arg;
 	};
-	Addr raddr;
+	Addr raddr;				// The address of the return value. Used by operators.
 } Command;
 
 
 typedef struct Register {
-	uint8_t type;
-	union {
+	uint8_t type;			// The type of the variable in RegisterType enum.
+	union {					// The value of the variable.
 		Addr addr_value;
 		void *ptr_value;
 		Byte byte_value;
@@ -59,10 +59,20 @@ typedef struct Register {
 } Register;
 
 
+/**
+ * The virtual machine, which has variable memory, a list of commands and a pointer
+ * to the current command in execution.
+ *
+ * Create a new virtual machine with vm_new and delete it with vm_delete.
+ * Add a command to the machine with vm_add_cmd.
+ * Run the machine with vm_execute.
+ * Clear the commands with vm_clear_commands.
+ * 
+ */
 typedef struct VM {
-	Addr cmd_ptr;
-	Array *commands;
-	Array *stack;
+	Addr cmd_ptr;		// The current point of execution. Points to an element in commands.
+	Array *commands;	// The list of commands to execute. An array of Command objects.
+	Array *stack;		// The memory of the machine. An array of Register objects.
 } VM;
 
 

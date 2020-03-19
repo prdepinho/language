@@ -142,7 +142,24 @@ program
 	}
 	| program label NEWLINE
 	| program NEWLINE
+	| program function_declaration
 	;
+
+function_declaration
+	: IDENTIFIER  param_list ':' type
+	{
+		printf("function declaration\n");
+	}
+	;
+
+param_list
+	: param_list_content ')'
+
+param_list_content
+	: param_list_content ',' IDENTIFIER ':' type
+	| '(' IDENTIFIER ':' type
+	| '('
+	; 
 
 label
 	: IDENTIFIER ':'
