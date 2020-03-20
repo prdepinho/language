@@ -1,5 +1,6 @@
 
 %{
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +11,7 @@
 
 extern FILE *yyin;
 
+bool interactive_mode;
 Map *variables;
 VM *vm;
 size_t vcount;
@@ -26,16 +28,25 @@ void exit_program(int status_code) {
 		map_delete(variables);
 	if (vm != NULL)
 		vm_delete(vm);
+	fclose(yyin);
+	printf("Good bye.\n");
 	exit(status_code);
 }
 
 int yyparse();
 int yylex();
 
-void yyerror(const char *str) { /* fprintf(stderr, "Error: %s\n", str); */ }
+void yyerror(const char *str) {
+	fprintf(stderr, "YYError: %s\n", str);
+}
 
+// This function is called when finished reading from yyin. Execute code if it was a file.
 int yywrap() { 
-	fclose(yyin);
+	printf("wrapping up.\n");
+	if (!interactive_mode) {
+		printf("executing in non interactive mode\n");
+		vm_run(vm);
+	}
 	return 1; 
 }
 
@@ -44,30 +55,34 @@ int main(int argc, const char **argv) {
 	if (argc > 1) {
 		printf("%s\n", argv[1]);
 		yyin = fopen(argv[1], "r");
+		interactive_mode = false;
 	}
+	else
+		interactive_mode = true;
 
 	// initialization
-
 	int rval = 0;
-	vcount = 1;
-	variables = NULL;
-	vm = NULL;
+	{
+		vcount = 1;
+		variables = NULL;
+		vm = NULL;
 
-	variables = map_new(2);
-	if (variables == NULL) {
-		printf("Map is null.\n");
-		rval = 1;
-		goto main_end;
+		variables = map_new(2);
+		if (variables == NULL) {
+			printf("Map is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
+		vm = vm_new();
+		if (vm == NULL) {
+			printf("vm is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
+		null_addr = vm_push_int(vm, 0);
 	}
-
-	vm = vm_new();
-	if (vm == NULL) {
-		printf("vm is null.\n");
-		rval = 1;
-		goto main_end;
-	}
-
-	null_addr = vm_push_int(vm, 0);
 
 	yyparse();
 
@@ -94,8 +109,10 @@ main_end:
 %type <float_value> FLOAT_LITERAL
 %type <int_value> HEX_LITERAL
 %type <addr_value> expression
+%type <int_value> vm_command_int_param
+%type <float_value> vm_command_float_param
 
-%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS
+%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT
 %left '+' '-'
 %left '*' '/' '%'
 %left '^'
@@ -114,7 +131,6 @@ program
 		vm_run(vm);
 		clean_stack();
 	}
-	| program command NEWLINE
 	| program expression NEWLINE
 	{
 		vm_run(vm);
@@ -142,13 +158,23 @@ program
 	}
 	| program label NEWLINE
 	| program NEWLINE
-	| program function_declaration
+	| program function_declaration NEWLINE
+	| program command NEWLINE
+	| program vm_command NEWLINE
+	{
+		// if it is interactive mode, execute after each line.
+		if (interactive_mode) {
+			vm_run(vm);
+		}
+	}
 	;
 
 function_declaration
 	: IDENTIFIER  param_list ':' type
 	{
+		char *identifier = $1;
 		printf("function declaration\n");
+		free(identifier);
 	}
 	;
 
@@ -157,7 +183,15 @@ param_list
 
 param_list_content
 	: param_list_content ',' IDENTIFIER ':' type
+	{
+		char *identifier = $3;
+		free(identifier);
+	}
 	| '(' IDENTIFIER ':' type
+	{
+		char *identifier = $2;
+		free(identifier);
+	}
 	| '('
 	; 
 
@@ -599,77 +633,103 @@ command
 			break;
 		}
 print_end:;
-
 	}
-	| STACK
+	;
+
+vm_command
+	: STACK
 	{
-		for (int i = 0; i < vm->stack->length; i++) {
-			printf("%d: ", i);
-			Register reg = vm_get(vm, i);
-			switch (reg.type) {
-			case TYPE_BYTE:
-				printf("(byte) %d\n", reg.byte_value);
-				break;
-			case TYPE_UINT:
-				printf("(uint) %lu\n", reg.uint_value);
-				break;
-			case TYPE_INT:
-				printf("(int) %ld\n", reg.int_value);
-				break;
-			case TYPE_FLOAT:
-				printf("(float) %f\n", reg.float_value);
-				break;
-			}
-		}
-		printf("Total: %lu\n", vm->stack->length);
+		vm_push_cmd_stack(vm);
 	}
 	| COMMANDS
 	{
-		for (int i = 0; i < vm->commands->length; i++) {
-			if (i == vm->cmd_ptr)
-				printf("> ");
-			printf("%d: ", i);
-			Command cmd;
-			array_get(vm->commands, i, &cmd);
-			switch (cmd.code) {
-			case CMD_SET_BYTE:
-				printf("set byte");
-				break;
-			case CMD_SET_UINT:
-				printf("set uint\n");
-				break;
-			case CMD_SET_INT:
-				printf("set int\n");
-				break;
-			case CMD_SET_FLOAT:
-				printf("set float\n");
-				break;
-			case CMD_ADD:
-				printf("add\n");
-				break;
-			case CMD_SUB:
-				printf("sub\n");
-				break;
-			case CMD_MULT:
-				printf("mult\n");
-				break;
-			case CMD_DIV:
-				printf("div\n");
-				break;
-			case CMD_JUMP:
-				printf("jump\n");
-				break;
-			case CMD_JCOND:
-				printf("jcond\n");
-				break;
-			case CMD_POP:
-				printf("pop\n");
-				break;
-			}
-		}
-		if (vm->cmd_ptr == vm->commands->length)
-			printf(">\n");
-		printf("Total: %lu\n", vm->commands->length);
+		vm_push_cmd_commands(vm);
+	}
+	| PRINT vm_command_int_param
+	{
+		vm_push_cmd_print(vm, $2);
+	}
+	| VM_SET_BYTE vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_set_byte(vm, $2, $3);
+	}
+	| VM_SET_INT vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_set_int(vm, $2, $3);
+	}
+	| VM_SET_UINT vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_set_uint(vm, $2, $3);
+	}
+	| VM_SET_FLOAT vm_command_int_param vm_command_float_param
+	{
+		vm_push_cmd_set_float(vm, $2, $3);
+	}
+	| VM_ADD vm_command_int_param vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_add(vm, $2, $3, $4);
+	}
+	| VM_SUB vm_command_int_param vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_sub(vm, $2, $3, $4);
+	}
+	| VM_MULT vm_command_int_param vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_mult(vm, $2, $3, $4);
+	}
+	| VM_DIV vm_command_int_param vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_div(vm, $2, $3, $4);
+	}
+	| VM_AND vm_command_int_param vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_and(vm, $2, $3, $4);
+	}
+	| VM_OR vm_command_int_param vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_or(vm, $2, $3, $4);
+	}
+	| VM_XOR vm_command_int_param vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_xor(vm, $2, $3, $4);
+	}
+	| VM_NOT vm_command_int_param vm_command_int_param 
+	{
+		vm_push_cmd_not(vm, $2, $3);
+	}
+	| VM_JUMP vm_command_int_param
+	{
+		vm_push_cmd_jump(vm, $2);
+	}
+	| VM_JCOND vm_command_int_param vm_command_int_param
+	{
+		vm_push_cmd_jcond(vm, $2, $3);
+	}
+	| VM_PUSH
+	{
+		vm_push_cmd_push(vm);
+	}
+	| VM_POP
+	{
+		vm_push_cmd_pop(vm);
+	}
+	;
+
+vm_command_int_param
+	: INT_LITERAL
+	{
+		$$ = $1;
+	}
+	| HEX_LITERAL
+	{
+		$$ = $1;
+	}
+	;
+
+vm_command_float_param
+	: FLOAT_LITERAL
+	{
+		$$ = $1;
 	}
 	;
 
@@ -683,3 +743,4 @@ type
 boolean
 	: TRUE { $$ = 1; }
 	| FALSE { $$ = 0; }
+	;
