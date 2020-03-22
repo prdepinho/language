@@ -21,7 +21,7 @@ size_t vcount;				// up to where variables have been declared in the stack.
 // clean the stack of constants.
 void clean_stack() {
 	for (Addr i = vm->stack->length; i > vcount; i--) {
-		vm_pop(vm);
+		vm_push_cmd_pop(vm);
 	}
 }
 
@@ -218,7 +218,7 @@ end_block
 		// This removes from the stack all variables in the scope, but they are still in the map.
 		// If you refer to them again outside the scope, what happens is undefined behavior.
 		for (Addr i = vm->stack->length; i > count; i--) {
-			vm_pop(vm);
+			vm_push_cmd_pop(vm);
 		}
 	}
 	;
