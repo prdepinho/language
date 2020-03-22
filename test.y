@@ -11,12 +11,14 @@
 
 extern FILE *yyin;
 
-bool interactive_mode;
-Map *variables;
 VM *vm;
-size_t vcount;
-Addr null_addr;
+bool interactive_mode;		// when input is from stdin and executing them at once.
+Array *scope_stack;			// keeps track of the scope of variables.
+Map *variables;				// maps variable names with their place in the stack.
+Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
+size_t vcount;				// up to where variables have been declared in the stack.
 
+// clean the stack of constants.
 void clean_stack() {
 	for (Addr i = vm->stack->length; i > vcount; i--) {
 		vm_pop(vm);
@@ -28,6 +30,8 @@ void exit_program(int status_code) {
 		map_delete(variables);
 	if (vm != NULL)
 		vm_delete(vm);
+	if (scope_stack != NULL)
+		array_delete(scope_stack);
 	fclose(yyin);
 	printf("Good bye.\n");
 	exit(status_code);
@@ -43,10 +47,6 @@ void yyerror(const char *str) {
 // This function is called when finished reading from yyin. Execute code if it was a file.
 int yywrap() { 
 	printf("wrapping up.\n");
-	if (!interactive_mode) {
-		printf("executing in non interactive mode\n");
-		vm_run(vm);
-	}
 	return 1; 
 }
 
@@ -57,8 +57,10 @@ int main(int argc, const char **argv) {
 		yyin = fopen(argv[1], "r");
 		interactive_mode = false;
 	}
-	else
+	else {
 		interactive_mode = true;
+		printf("Interactive mode.\n");
+	}
 
 	// initialization
 	int rval = 0;
@@ -77,6 +79,13 @@ int main(int argc, const char **argv) {
 		vm = vm_new();
 		if (vm == NULL) {
 			printf("vm is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
+		scope_stack = array_new(sizeof(size_t), 0);
+		if (scope_stack == NULL) {
+			printf("scope_stack is null.\n");
 			rval = 1;
 			goto main_end;
 		}
@@ -120,51 +129,96 @@ main_end:
 %%
 
 program
+	: sentences
+	{
+		if (!interactive_mode)
+			vm_run(vm);
+	}
+	;
+
+sentences
 	: %empty
-	| program declaration NEWLINE
+	| sentences declaration end_sentence
 	{
-		vm_run(vm);
-		clean_stack();
-	}
-	| program assignment NEWLINE
-	{
-		vm_run(vm);
-		clean_stack();
-	}
-	| program expression NEWLINE
-	{
-		vm_run(vm);
-		Addr addr = $2;
-		Register reg = vm_get(vm, addr);
-		switch (reg.type) {
-		case TYPE_BYTE:
-			printf("%d\n", reg.byte_value);
-			break;
-		case TYPE_UINT:
-			printf("%lu\n", reg.uint_value);
-			break;
-		case TYPE_INT:
-			printf("%ld\n", reg.int_value);
-			break;
-		case TYPE_FLOAT:
-			printf("%f\n", reg.float_value);
-			break;
+		if (interactive_mode) {
+			vm_run(vm);
 		}
 		clean_stack();
 	}
-	| program error NEWLINE
+	| sentences assignment end_sentence
+	{
+		if (interactive_mode) {
+			vm_run(vm);
+		}
+		clean_stack();
+	}
+	| sentences expression end_sentence
+	{
+		if (interactive_mode) {
+			vm_run(vm);
+			Addr addr = $2;
+			Register reg = vm_get(vm, addr);
+			switch (reg.type) {
+			case TYPE_BYTE:
+				printf("%d\n", reg.byte_value);
+				break;
+			case TYPE_UINT:
+				printf("%lu\n", reg.uint_value);
+				break;
+			case TYPE_INT:
+				printf("%ld\n", reg.int_value);
+				break;
+			case TYPE_FLOAT:
+				printf("%f\n", reg.float_value);
+				break;
+			}
+		}
+		clean_stack();
+	}
+	| sentences error end_sentence
 	{
 		printf("Error\n");
 	}
-	| program label NEWLINE
-	| program NEWLINE
-	| program function_declaration NEWLINE
-	| program command NEWLINE
-	| program vm_command NEWLINE
+	| sentences label end_sentence
+	| sentences end_sentence
+	| sentences function_declaration end_sentence
+	| sentences command end_sentence
+	| sentences vm_command end_sentence
 	{
 		// if it is interactive mode, execute after each line.
 		if (interactive_mode) {
 			vm_run(vm);
+		}
+	}
+	| sentences block
+	;
+
+block
+	: start_block sentences end_block
+	{
+		printf("a block\n");
+	}
+	;
+
+start_block
+	: '{'
+	{
+		size_t level = array_push(scope_stack, &vm->stack->length);
+		printf("start scope: level: %lu, stack: %lu\n", level, vm->stack->length);
+	}
+	;
+
+end_block
+	: '}'
+	{
+		size_t count = 0;
+		size_t level = array_pop(scope_stack, &count);
+		printf("end scope: level: %lu, stack: %lu\n", level, vm->stack->length);
+
+		// This removes from the stack all variables in the scope, but they are still in the map.
+		// If you refer to them again outside the scope, what happens is undefined behavior.
+		for (Addr i = vm->stack->length; i > count; i--) {
+			vm_pop(vm);
 		}
 	}
 	;
@@ -743,4 +797,9 @@ type
 boolean
 	: TRUE { $$ = 1; }
 	| FALSE { $$ = 0; }
+	;
+
+end_sentence
+	: NEWLINE
+	| ';'
 	;
