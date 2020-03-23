@@ -32,6 +32,8 @@ enum CommandCode {
 	CMD_STACK = 19,		// Dump the stack.
 	CMD_COMMANDS = 20,	// Dump the command list.
 	CMD_PRINT = 21,		// Dump the value of addr.
+	CMD_COPY = 22,		// Copy to addr the value of addr_arg.
+	CMD_ASSIGN = 23,	// Assign to addr the value of addr_arg, converting types.
 };
 // and, or, xor, not, compare
 
@@ -107,6 +109,9 @@ void vm_clear_commands(VM *vm);
 // Parameters addr, addr_arg and raddr are absolute addresses and refer to the stack.
 // Returns the pushed command's index in the commands list.
 
+Addr vm_push_cmd_copy(VM *vm, Addr addr, Addr addr_arg);
+Addr vm_push_cmd_assign(VM *vm, Addr addr, Addr addr_arg);
+
 Addr vm_push_cmd_set_byte(VM *vm, Addr addr, Byte byte_arg); 
 Addr vm_push_cmd_set_int(VM *vm, Addr addr, Int int_arg); 
 Addr vm_push_cmd_set_uint(VM *vm, Addr addr, UInt uint_arg); 
@@ -141,6 +146,8 @@ Addr vm_push_cmd_print(VM *vm, Addr addr);
 void vm_stack_dump(VM *vm);
 void vm_commands_dump(VM *vm);
 void vm_register_dump(VM *vm, Addr addr);
+
+void vm_assign(VM *vm, Addr lval_addr, Addr rval_addr);
 
 Addr vm_push(VM *vm);
 Addr vm_push_byte(VM *vm, Byte value);

@@ -19,7 +19,7 @@ bool interactive_mode;		// when input is from stdin and executing them at once.
 Array *scope_stack;			// keeps track of identifiers positions for each scope level.
 Array *identifiers;			// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
 Map *variables;				// maps variable names with their place in the machine stack.
-size_t ccount;				// count how many constants have been used for each sentence.
+size_t stack_track;			// keep track in compile time of the size of the machine stack.
 
 // null pointer
 Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
@@ -67,7 +67,7 @@ int main(int argc, const char **argv) {
 	// initialization
 	int rval = 0;
 	{
-		ccount = 0;
+		stack_track = 0;
 		variables = NULL;
 		vm = NULL;
 
@@ -152,19 +152,11 @@ sentences
 		if (interactive_mode) {
 			vm_run(vm);
 		}
-		// clean stack from constants
-		for (; ccount > 0; ccount--) {
-			vm_push_cmd_pop(vm);
-		}
 	}
 	| sentences assignment end_sentence
 	{
 		if (interactive_mode) {
 			vm_run(vm);
-		}
-		// clean stack from constants
-		for (; ccount > 0; ccount--) {
-			vm_push_cmd_pop(vm);
 		}
 	}
 	| sentences expression end_sentence
@@ -187,10 +179,6 @@ sentences
 				printf("%f\n", reg.float_value);
 				break;
 			}
-		}
-		// clean stack from constants
-		for (; ccount > 0; ccount--) {
-			vm_push_cmd_pop(vm);
 		}
 	}
 	| sentences error end_sentence
@@ -221,8 +209,8 @@ block
 start_block
 	: '{'
 	{
-		size_t level = array_push(scope_stack, &identifiers->length);
-		printf("start scope: level: %lu, identifiers: %lu\n", level, identifiers->length);
+		size_t level = array_push(scope_stack, &stack_track);
+		printf("start scope: level: %lu, stack_track: %lu\n", level, stack_track);
 	}
 	;
 
@@ -231,9 +219,9 @@ end_block
 	{
 		size_t position = 0;
 		array_pop(scope_stack, &position);
-		printf("returning to %lu from %lu\n", position, identifiers->length);
+		printf("returning to %lu from %lu\n", position, stack_track);
 
-		for (Addr i = identifiers->length; i > position; i--) {
+		for (; stack_track > position; stack_track--) {
 			// remove variables from stack and from map (compile time)
 			char *vname = NULL;
 			array_pop(identifiers, &vname);
@@ -277,16 +265,17 @@ label
 	{
 		char *identifier = $1;
 
+		stack_track++;
 		array_push(identifiers, &identifier);
 
 		map_put (
 			variables,
 			identifier, strlen(identifier),
-			&identifiers->length, sizeof(identifiers->length)
+			&stack_track, sizeof(stack_track)
 		);
 
 		Addr addr = vm_push_cmd_push(vm);
-		vm_push_cmd_set_uint(vm, identifiers->length, addr);
+		vm_push_cmd_set_uint(vm, stack_track, addr);
 	}
 
 declaration
@@ -295,155 +284,61 @@ declaration
 		char *identifier = $1;
 		int type = $3;
 
+		stack_track++;
 		array_push(identifiers, &identifier);
 
 		map_put (
 			variables,
 			identifier, strlen(identifier),
-			&identifiers->length, sizeof(identifiers->length)
+			&stack_track, sizeof(stack_track)
 		);
 
 		vm_push_cmd_push(vm);
 
 		switch (type) {
 		case TYPE_BYTE:
-			vm_push_cmd_set_byte(vm, identifiers->length, 0);
+			vm_push_cmd_set_byte(vm, stack_track, 0);
 			break;
 		case TYPE_UINT:
-			vm_push_cmd_set_uint(vm, identifiers->length, 0);
+			vm_push_cmd_set_uint(vm, stack_track, 0);
 			break;
 		case TYPE_INT:
-			vm_push_cmd_set_int(vm, identifiers->length, 0);
+			vm_push_cmd_set_int(vm, stack_track, 0);
 			break;
 		case TYPE_FLOAT:
-			vm_push_cmd_set_float(vm, identifiers->length, 0.0);
+			vm_push_cmd_set_float(vm, stack_track, 0.0);
 			break;
 		}
 	}
 	| IDENTIFIER ':' type '=' expression
 	{
-#if false
-	{
 		char *identifier = $1;
 		int type = $3;
 		Addr rregaddr = $5;
 
+		stack_track++;
 		array_push(identifiers, &identifier);
 
 		map_put (
 			variables,
 			identifier, strlen(identifier),
-			&identifiers->length, sizeof(identifiers->length)
+			&stack_track, sizeof(stack_track)
 		);
 
-		Register lreg = vm_get(vm, vcount);
-		Register rreg = vm_get(vm, rregaddr);
+		vm_push_cmd_push(vm);
 
-		Command cmd;
-		switch (lreg.type) {
-		case TYPE_BYTE:
-			cmd.code = CMD_SET_BYTE;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.addr = vm_push_byte(vm, 0);
-				cmd.byte_arg = rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.addr = vm_push_byte(vm, 0);
-				cmd.byte_arg = (Byte) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.addr = vm_push_byte(vm, 0);
-				cmd.byte_arg = (Byte) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.addr = vm_push_byte(vm, 0);
-				cmd.byte_arg = (Byte) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_UINT:
-			cmd.code = CMD_SET_UINT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.addr = vm_push_uint(vm, 0);
-				cmd.uint_arg = (UInt) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.addr = vm_push_uint(vm, 0);
-				cmd.uint_arg = rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.addr = vm_push_uint(vm, 0);
-				cmd.uint_arg = (UInt) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.addr = vm_push_uint(vm, 0);
-				cmd.uint_arg = (UInt) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_INT:
-			cmd.code = CMD_SET_INT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.addr = vm_push_int(vm, 0);
-				cmd.int_arg = (Int) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.addr = vm_push_int(vm, 0);
-				cmd.int_arg = (Int) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.addr = vm_push_int(vm, 0);
-				cmd.int_arg = rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.addr = vm_push_int(vm, 0);
-				cmd.int_arg = (Int) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_FLOAT:
-			cmd.code = CMD_SET_FLOAT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.addr = vm_push_float(vm, 0.0);
-				cmd.float_arg = (Float) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.addr = vm_push_float(vm, 0.0);
-				cmd.float_arg = (Float) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.addr = vm_push_float(vm, 0.0);
-				cmd.float_arg = (Float) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.addr = vm_push_float(vm, 0.0);
-				cmd.float_arg = rreg.float_value;
-				break;
-			}
-			break;
-		}
-		vm_push_cmd(vm, cmd);
-	}
-#endif
+		vm_push_cmd_assign(vm, stack_track, rregaddr);
 	}
 	;
 
 assignment
 	: IDENTIFIER '=' expression
 	{
-#if false
-	{
 		char *identifier = $1;
-		Addr rregaddr = $3;
 
+		Addr rregaddr = $3;
 		Addr lregaddr;
+
 		size_t size;
 		if (map_get (
 			variables,
@@ -455,219 +350,34 @@ assignment
 			goto assignment_end;
 		}
 
-		Register lreg = vm_get(vm, lregaddr);
-		Register rreg = vm_get(vm, rregaddr);
-
-		Command cmd;
-		cmd.addr = lregaddr;
-
-		switch (lreg.type) {
-		case TYPE_BYTE:
-			cmd.code = CMD_SET_BYTE;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.byte_arg = rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.byte_arg = (Byte) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.byte_arg = (Byte) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.byte_arg = (Byte) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_UINT:
-			cmd.code = CMD_SET_UINT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.uint_arg = (UInt) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.uint_arg = rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.uint_arg = (UInt) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.uint_arg = (UInt) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_INT:
-			cmd.code = CMD_SET_INT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.int_arg = (Int) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.int_arg = (Int) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.int_arg = rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.int_arg = (Int) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_FLOAT:
-			cmd.code = CMD_SET_FLOAT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.float_arg = (Float) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.float_arg = (Float) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.float_arg = (Float) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.float_arg = rreg.float_value;
-				break;
-			}
-			break;
-		}
-		vm_push_cmd(vm, cmd);
+		vm_push_cmd_assign(vm, lregaddr, rregaddr);
 
 assignment_end:
 		free(identifier);
-	}
-#else 
-	{
-		char *identifier = $1;
-		Addr rregaddr = $3;
-
-		Addr lregaddr;
-		size_t size;
-		if (map_get (
-			variables,
-			identifier, strlen(identifier),
-			&lregaddr, &size
-		))
-		{
-			printf("Identifier '%s' undeclared.\n", identifier);
-			goto assignment_end;
-		}
-
-		Register lreg = vm_get(vm, lregaddr);
-		Register rreg = vm_get(vm, rregaddr);
-
-		Command cmd;
-		cmd.addr = lregaddr;
-
-		switch (lreg.type) {
-		case TYPE_BYTE:
-			cmd.code = CMD_SET_BYTE;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.byte_arg = rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.byte_arg = (Byte) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.byte_arg = (Byte) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.byte_arg = (Byte) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_UINT:
-			cmd.code = CMD_SET_UINT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.uint_arg = (UInt) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.uint_arg = rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.uint_arg = (UInt) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.uint_arg = (UInt) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_INT:
-			cmd.code = CMD_SET_INT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.int_arg = (Int) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.int_arg = (Int) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.int_arg = rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.int_arg = (Int) rreg.float_value;
-				break;
-			}
-			break;
-
-		case TYPE_FLOAT:
-			cmd.code = CMD_SET_FLOAT;
-			switch (rreg.type) {
-			case TYPE_BYTE:
-				cmd.float_arg = (Float) rreg.byte_value;
-				break;
-			case TYPE_UINT:
-				cmd.float_arg = (Float) rreg.uint_value;
-				break;
-			case TYPE_INT:
-				cmd.float_arg = (Float) rreg.int_value;
-				break;
-			case TYPE_FLOAT:
-				cmd.float_arg = rreg.float_value;
-				break;
-			}
-			break;
-		}
-		vm_push_cmd(vm, cmd);
-
-assignment_end:
-		free(identifier);
-	}
-#endif
 	}
 	;
 
 expression
 	: INT_LITERAL
 	{
-#if false
-		$$ = vm_push_int(vm, $1);
-#endif
-		ccount++;
+		stack_track++;
 		vm_push_cmd_push(vm);
-		vm_push_cmd_set_int(vm, -ccount, $1);
-		$$ = -ccount;
+		vm_push_cmd_set_int(vm, stack_track, $1);
+		$$ = stack_track;
 	}
 	| FLOAT_LITERAL
 	{
-		ccount++;
+		stack_track++;
 		vm_push_cmd_push(vm);
-		vm_push_cmd_set_float(vm, -ccount, $1);
-		$$ = -ccount;
+		vm_push_cmd_set_float(vm, stack_track, $1);
+		$$ = stack_track;
 	}
 	| HEX_LITERAL
 	{
-		ccount++;
+		stack_track++;
 		vm_push_cmd_push(vm);
-		vm_push_cmd_set_int(vm, -ccount, $1);
-		$$ = -ccount;
+		vm_push_cmd_set_int(vm, stack_track, $1);
+		$$ = stack_track;
 	}
 	| STRING_LITERAL
 	{
@@ -852,23 +562,23 @@ print_end:;
 			Register reg = vm_get(vm, addr);
 
 			if (array_contains(scope_stack, &i))
-				printf("%d: > ", i);
+				printf("_ %4d: ", i);
 			else
-				printf("%d:   ", i);
+				printf("  %4d: ", i);
 
-			printf("%s #%li ", vname, addr);
+			printf("#%-4li ", addr); 
 			switch (reg.type) {
 			case TYPE_BYTE:
-				printf("(byte) %d\n", reg.byte_value);
+				printf("(byte)    %-15s %10d\n", vname, reg.byte_value);
 				break;
 			case TYPE_UINT:
-				printf("(uint) %lu\n", reg.uint_value);
+				printf("(uint)    %-15s %10lu\n", vname, reg.uint_value);
 				break;
 			case TYPE_INT:
-				printf("(int) %ld\n", reg.int_value);
+				printf("(int)     %-15s %10ld\n", vname, reg.int_value);
 				break;
 			case TYPE_FLOAT:
-				printf("(float) %f\n", reg.float_value);
+				printf("(float)   %-15s %10f\n", vname, reg.float_value);
 				break;
 			default:
 				printf("default\n");

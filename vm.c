@@ -49,6 +49,15 @@ int vm_run(VM *vm) {
 
 Addr vm_execute(VM *vm, Command cmd) {
 	switch(cmd.code) {
+	case CMD_COPY:
+		{
+		Register reg = vm_get(vm, cmd.addr_arg);
+		vm_set(vm, cmd.addr, reg);
+		break;
+		}
+	case CMD_ASSIGN:
+		vm_assign(vm, cmd.addr, cmd.addr_arg);
+		break;
 	case CMD_SET_BYTE:
 		{
 		Register reg;
@@ -146,6 +155,22 @@ Addr vm_execute(VM *vm, Command cmd) {
 }
 
 Addr vm_push_cmd(VM *vm, Command cmd) {
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_copy(VM *vm, Addr addr, Addr addr_arg) {
+	Command cmd;
+	cmd.code = CMD_COPY;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_assign(VM *vm, Addr addr, Addr addr_arg) {
+	Command cmd;
+	cmd.code = CMD_ASSIGN;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
 	return array_push(vm->commands, &cmd);
 }
 
@@ -300,6 +325,50 @@ Addr vm_push_cmd_print(VM *vm, Addr addr) {
 
 void vm_clear_commands(VM *vm) {
 	vm->commands->length = 0;
+}
+
+void vm_assign(VM *vm, Addr lval_addr, Addr rval_addr) {
+	Register lval;
+	Register rval;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:  lval.byte_value = rval.byte_value; break;
+				case TYPE_UINT:  lval.byte_value = (Byte) rval.uint_value; break;
+				case TYPE_INT:   lval.byte_value = (Byte) rval.int_value; break;
+				case TYPE_FLOAT: lval.byte_value = (Byte) rval.float_value; break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:  lval.uint_value = (UInt) rval.byte_value; break;
+				case TYPE_UINT:  lval.uint_value = rval.uint_value; break;
+				case TYPE_INT:   lval.uint_value = (UInt) rval.int_value; break;
+				case TYPE_FLOAT: lval.uint_value = (UInt) rval.float_value; break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:  lval.int_value = (Int) rval.byte_value; break;
+				case TYPE_UINT:  lval.int_value = (Int) rval.uint_value; break;
+				case TYPE_INT:   lval.int_value = rval.int_value; break;
+				case TYPE_FLOAT: lval.int_value = (Int) rval.float_value; break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:  lval.float_value = (Float) rval.byte_value; break;
+				case TYPE_UINT:  lval.float_value = (Float) rval.uint_value; break;
+				case TYPE_INT:   lval.float_value = (Float) rval.int_value; break;
+				case TYPE_FLOAT: lval.float_value = rval.float_value; break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, lval_addr, &lval);
 }
 
 Addr vm_push(VM *vm) {
@@ -1104,20 +1173,20 @@ void vm_set(VM *vm, Addr index, Register reg) {
 
 void vm_stack_dump(VM *vm) {
 	for (int i = 0; i < vm->stack->length; i++) {
-		printf("  %d: ", i);
+		printf("%4d: ", i);
 		Register reg = vm_get(vm, i);
 		switch (reg.type) {
 		case TYPE_BYTE:
-			printf("(byte) %d\n", reg.byte_value);
+			printf("(byte)     %10d\n", reg.byte_value);
 			break;
 		case TYPE_UINT:
-			printf("(uint) %lu\n", reg.uint_value);
+			printf("(uint)     %10lu\n", reg.uint_value);
 			break;
 		case TYPE_INT:
-			printf("(int) %ld\n", reg.int_value);
+			printf("(int)      %10ld\n", reg.int_value);
 			break;
 		case TYPE_FLOAT:
-			printf("(float) %f\n", reg.float_value);
+			printf("(float)    %10f\n", reg.float_value);
 			break;
 		default:
 			printf("(undefined) \n");
@@ -1128,7 +1197,7 @@ void vm_stack_dump(VM *vm) {
 }
 
 void vm_commands_dump(VM *vm) {
-	printf("%5s%10s %10s %10s %10s\n", "", "command", "addr", "arg", "raddr");
+	printf("%5s%10s %13s %10s %10s\n", "", "command", "addr", "arg", "raddr");
 	for (int i = 0; i < vm->commands->length; i++) {
 		if (i == vm->cmd_ptr)
 			printf("> %4d: ", i);
@@ -1137,105 +1206,129 @@ void vm_commands_dump(VM *vm) {
 		Command cmd;
 		array_get(vm->commands, i, &cmd);
 		switch (cmd.code) {
+		case CMD_COPY:
+			printf("%-10s", "copy");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10s", "-");
+			break;
+		case CMD_ASSIGN:
+			printf("%-10s", "assign");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10s", "-");
+			break;
 		case CMD_SET_BYTE:
-			printf("set_byte");
-			printf(" %10lu", cmd.addr);
+			printf("%-10s", "set_byte");
+			printf(" %10ld", cmd.addr);
 			printf(" %10d", cmd.byte_arg);
 			printf(" %10s", "-");
 			break;
 		case CMD_SET_UINT:
-			printf("set_uint");
-			printf(" %10lu", cmd.addr);
+			printf("%-10s", "set_uint");
+			printf(" %10ld", cmd.addr);
 			printf(" %10lu", cmd.uint_arg);
 			printf(" %10s", "-");
 			break;
 		case CMD_SET_INT:
-			printf("set_int");
-			printf(" %10lu", cmd.addr);
+			printf("%-10s", "set_int");
+			printf(" %10ld", cmd.addr);
 			printf(" %10ld", cmd.int_arg);
 			printf(" %10s", "-");
 			break;
 		case CMD_SET_FLOAT:
-			printf("set_float");
-			printf(" %10lu", cmd.addr);
+			printf("%-10s", "set_float");
+			printf(" %10ld", cmd.addr);
 			printf(" %10f", cmd.float_arg);
 			printf(" %10s", "-");
 			break;
 		case CMD_ADD:
-			printf("add");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
-			printf(" %10lu", cmd.raddr);
+			printf("%-10s", "add");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_SUB:
-			printf("sub");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
-			printf(" %10lu", cmd.raddr);
+			printf("%-10s", "sub");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_MULT:
-			printf("mult");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
-			printf(" %10lu", cmd.raddr);
+			printf("%-10s", "mult");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_DIV:
-			printf("div");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
-			printf(" %10lu", cmd.raddr);
+			printf("%-10s", "div");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_AND:
-			printf("and");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
-			printf(" %10lu", cmd.raddr);
+			printf("%-10s", "and");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_OR:
-			printf("or");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
-			printf(" %10lu", cmd.raddr);
+			printf("%-10s", "or");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_XOR:
-			printf("xor");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
-			printf(" %10lu", cmd.raddr);
+			printf("%-10s", "xor");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_NOT:
-			printf("not");
-			printf(" %10lu", cmd.addr);
+			printf("%-10s", "not");
+			printf(" %10ld", cmd.addr);
 			printf(" %10s", "-");
-			printf(" %10lu", cmd.raddr);
+			printf(" %10ld", cmd.raddr);
 			break;
 		case CMD_JUMP:
-			printf("jump");
-			printf(" %10lu", cmd.addr);
+			printf("%-10s", "jump");
+			printf(" %10ld", cmd.addr);
 			printf(" %10s", "-");
 			printf(" %10s", "-");
 			break;
 		case CMD_JCOND:
-			printf("jcond");
-			printf(" %10lu", cmd.addr);
-			printf(" %10lu", cmd.addr_arg);
+			printf("%-10s", "jcond");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
 			printf(" %10s", "-");
 			break;
 		case CMD_POP:
-			printf("pop");
+			printf("%-10s", "pop");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
 			break;
 		case CMD_PUSH:
-			printf("push");
+			printf("%-10s", "push");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
 			break;
 		case CMD_STACK:
-			printf("stack");
+			printf("%-10s", "stack");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
 			break;
 		case CMD_COMMANDS:
-			printf("commands");
+			printf("%-10s", "commands");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
 			break;
 		case CMD_PRINT:
-			printf("print");
-			printf(" %10lu", cmd.addr);
+			printf("%-10s", "print");
+			printf(" %10ld", cmd.addr);
 			printf(" %10s", "-");
 			printf(" %10s", "-");
 			break;
