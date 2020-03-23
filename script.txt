@@ -1,8 +1,14 @@
 
-a:int = 10
-b:float = 3.14
-c:float = a+b
+# a:int = 10
+# b:float = 3.14
+# c:float = a+b
 
-print a
-print b
-print c
+# PRINT a
+# PRINT b
+# PRINT c
+
+# STACK
+
+
+a:byte = 10
+COMMANDS

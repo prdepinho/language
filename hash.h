@@ -29,6 +29,8 @@ int map_put(Map *map,
 int map_get(Map *map,
 		const void *key, size_t klen,
 		void *out_value, size_t *out_vlen);
+int map_remove(Map *map,
+		const void *key, size_t klen);
 
 uint32_t jenkins_one_at_a_time_hash(const uint8_t* key, size_t length);
 

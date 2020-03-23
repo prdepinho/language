@@ -76,3 +76,12 @@ size_t array_pop(Array *array, void *out_element){
 	return array->length;
 }
 
+int array_contains(Array *array, void *element) {
+	if (array->length == 0)
+		return 0;
+	for (int i = 0; i < array->length; i++) {
+		if (memcmp(array->heap + i * array->data_size, element, array->data_size) == 0)
+			return 1;
+	}
+	return 0;
+}

@@ -149,153 +149,153 @@ Addr vm_push_cmd(VM *vm, Command cmd) {
 	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_set_byte(VM *vm, Addr addr, Byte byte_arg) {
+Addr vm_push_cmd_set_byte(VM *vm, Addr addr, Byte byte_arg) {
 	Command cmd;
 	cmd.code = CMD_SET_BYTE;
 	cmd.addr = addr;
 	cmd.byte_arg = byte_arg;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_set_int(VM *vm, Addr addr, Int int_arg) {
+Addr vm_push_cmd_set_int(VM *vm, Addr addr, Int int_arg) {
 	Command cmd;
 	cmd.code = CMD_SET_INT;
 	cmd.addr = addr;
 	cmd.int_arg = int_arg;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_set_uint(VM *vm, Addr addr, UInt uint_arg) {
+Addr vm_push_cmd_set_uint(VM *vm, Addr addr, UInt uint_arg) {
 	Command cmd;
 	cmd.code = CMD_SET_UINT;
 	cmd.addr = addr;
 	cmd.uint_arg = uint_arg;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_set_float(VM *vm, Addr addr, Float float_arg) {
+Addr vm_push_cmd_set_float(VM *vm, Addr addr, Float float_arg) {
 	Command cmd;
 	cmd.code = CMD_SET_FLOAT;
 	cmd.addr = addr;
 	cmd.float_arg = float_arg;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_add(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+Addr vm_push_cmd_add(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_ADD;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_sub(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+Addr vm_push_cmd_sub(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_SUB;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_mult(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+Addr vm_push_cmd_mult(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_MULT;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_div(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+Addr vm_push_cmd_div(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_DIV;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_jump(VM *vm, Addr addr) {
+Addr vm_push_cmd_jump(VM *vm, Addr addr) {
 	Command cmd;
 	cmd.code = CMD_JUMP;
 	cmd.addr = addr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_jcond(VM *vm, Addr addr, Addr addr_arg) {
+Addr vm_push_cmd_jcond(VM *vm, Addr addr, Addr addr_arg) {
 	Command cmd;
 	cmd.code = CMD_JCOND;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_push(VM *vm) {
+Addr vm_push_cmd_push(VM *vm) {
 	Command cmd;
 	cmd.code = CMD_PUSH;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_pop(VM *vm) {
+Addr vm_push_cmd_pop(VM *vm) {
 	Command cmd;
 	cmd.code = CMD_POP;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_and(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+Addr vm_push_cmd_and(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_AND;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_or(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+Addr vm_push_cmd_or(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_OR;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_xor(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+Addr vm_push_cmd_xor(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_XOR;
 	cmd.addr = addr;
 	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_not(VM *vm, Addr addr, Addr raddr) {
+Addr vm_push_cmd_not(VM *vm, Addr addr, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_NOT;
 	cmd.addr = addr;
 	cmd.raddr = raddr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_stack(VM *vm) {
+Addr vm_push_cmd_stack(VM *vm) {
 	Command cmd;
 	cmd.code = CMD_STACK;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_commands(VM *vm) {
+Addr vm_push_cmd_commands(VM *vm) {
 	Command cmd;
 	cmd.code = CMD_COMMANDS;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
-void vm_push_cmd_print(VM *vm, Addr addr) {
+Addr vm_push_cmd_print(VM *vm, Addr addr) {
 	Command cmd;
 	cmd.code = CMD_PRINT;
 	cmd.addr = addr;
-	array_push(vm->commands, &cmd);
+	return array_push(vm->commands, &cmd);
 }
 
 void vm_clear_commands(VM *vm) {
@@ -1128,60 +1128,119 @@ void vm_stack_dump(VM *vm) {
 }
 
 void vm_commands_dump(VM *vm) {
+	printf("%5s%10s %10s %10s %10s\n", "", "command", "addr", "arg", "raddr");
 	for (int i = 0; i < vm->commands->length; i++) {
 		if (i == vm->cmd_ptr)
-			printf("> %d: ", i);
+			printf("> %4d: ", i);
 		else
-			printf("  %d: ", i);
+			printf("  %4d: ", i);
 		Command cmd;
 		array_get(vm->commands, i, &cmd);
 		switch (cmd.code) {
 		case CMD_SET_BYTE:
-			printf("set byte");
+			printf("set_byte");
+			printf(" %10lu", cmd.addr);
+			printf(" %10d", cmd.byte_arg);
+			printf(" %10s", "-");
 			break;
 		case CMD_SET_UINT:
-			printf("set uint\n");
+			printf("set_uint");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.uint_arg);
+			printf(" %10s", "-");
 			break;
 		case CMD_SET_INT:
-			printf("set int\n");
+			printf("set_int");
+			printf(" %10lu", cmd.addr);
+			printf(" %10ld", cmd.int_arg);
+			printf(" %10s", "-");
 			break;
 		case CMD_SET_FLOAT:
-			printf("set float\n");
+			printf("set_float");
+			printf(" %10lu", cmd.addr);
+			printf(" %10f", cmd.float_arg);
+			printf(" %10s", "-");
 			break;
 		case CMD_ADD:
-			printf("add\n");
+			printf("add");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10lu", cmd.raddr);
 			break;
 		case CMD_SUB:
-			printf("sub\n");
+			printf("sub");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10lu", cmd.raddr);
 			break;
 		case CMD_MULT:
-			printf("mult\n");
+			printf("mult");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10lu", cmd.raddr);
 			break;
 		case CMD_DIV:
-			printf("div\n");
+			printf("div");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10lu", cmd.raddr);
+			break;
+		case CMD_AND:
+			printf("and");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10lu", cmd.raddr);
+			break;
+		case CMD_OR:
+			printf("or");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10lu", cmd.raddr);
+			break;
+		case CMD_XOR:
+			printf("xor");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10lu", cmd.raddr);
+			break;
+		case CMD_NOT:
+			printf("not");
+			printf(" %10lu", cmd.addr);
+			printf(" %10s", "-");
+			printf(" %10lu", cmd.raddr);
 			break;
 		case CMD_JUMP:
-			printf("jump\n");
+			printf("jump");
+			printf(" %10lu", cmd.addr);
+			printf(" %10s", "-");
+			printf(" %10s", "-");
 			break;
 		case CMD_JCOND:
-			printf("jcond\n");
+			printf("jcond");
+			printf(" %10lu", cmd.addr);
+			printf(" %10lu", cmd.addr_arg);
+			printf(" %10s", "-");
 			break;
 		case CMD_POP:
-			printf("pop\n");
+			printf("pop");
 			break;
 		case CMD_PUSH:
-			printf("push\n");
+			printf("push");
 			break;
 		case CMD_STACK:
-			printf("stack\n");
+			printf("stack");
 			break;
 		case CMD_COMMANDS:
-			printf("commands\n");
+			printf("commands");
 			break;
 		case CMD_PRINT:
-			printf("print\n");
+			printf("print");
+			printf(" %10lu", cmd.addr);
+			printf(" %10s", "-");
+			printf(" %10s", "-");
 			break;
 		}
+		printf("\n");
 	}
 	if (vm->cmd_ptr == vm->commands->length)
 		printf(">\n");

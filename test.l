@@ -45,6 +45,7 @@ double						{return DOUBLE;}
 bool						{return BOOL;}
 string						{return STRING;}
 pure						{return PURE;}
+dump						{return DUMP;}
 PRINT						{return PRINT;}
 STACK						{return STACK;}
 COMMANDS					{return COMMANDS;}

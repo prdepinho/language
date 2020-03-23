@@ -123,6 +123,34 @@ int map_get(Map *map,
 	return 0;
 }
 
+int map_remove(Map *map,
+		const void *key, size_t klen)
+{
+	uint32_t complete_hash = jenkins_one_at_a_time_hash(key, klen);
+	uint32_t hash = complete_hash & map->hash_mask;
+
+	uint32_t home_hash = hash;
+	while(
+			map->buckets[hash].key != 0 &&
+			memcmp(map->buckets[hash].key, key, klen) != 0
+	){
+
+		hash = (hash + 1) % map->length;
+		if (hash == home_hash)
+			return 1;
+	}
+
+	if (map->buckets[hash].key == 0)
+		return 1;
+
+	free(map->buckets[hash].key);
+	map->buckets[hash].key = 0;
+	free(map->buckets[hash].value);
+	map->buckets[hash].value = 0;
+
+	return 0;
+}
+
 /* Taken from Wikipedia no less. */
 uint32_t jenkins_one_at_a_time_hash(const uint8_t* key, size_t length) {
 	size_t i = 0;

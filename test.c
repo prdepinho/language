@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "hash.h"
 #include "array.h"
 #include "vm.h"
@@ -36,6 +37,7 @@ int main(void){
 	}
 #endif
 
+#if false
 	{
 		VM *vm = vm_new();
 
@@ -74,6 +76,7 @@ int main(void){
 	
 		vm_delete(vm);
 	}
+#endif
 
 #if false
 	{
@@ -132,6 +135,38 @@ int main(void){
 
 	}
 #endif
+
+#if true
+	{
+		printf("test\n");
+		Array *stack = array_new(sizeof(int), 0);
+
+		for (int a = 0; a < 10; a++) {
+			array_push(stack, &a);
+		}
+		printf("length: %lu\n", stack->length);
+
+		for (int i = 0; i < stack->length; i++) {
+			int a;
+			array_get(stack, i, &a);
+			printf(" %d\n", a);
+		}
+		printf("length: %lu\n", stack->length);
+		printf("\n");
+
+		int length = stack->length + 1;
+		for (int i = 0; i < length; i++) {
+			int a;
+			array_pop(stack, &a);
+			printf(" %d\n", a);
+			printf("length: %lu\n", stack->length);
+		}
+
+		array_delete(stack);
+
+	}
+#endif
+
 #if false
 	{
 		Map *map = map_new(2);
@@ -198,32 +233,34 @@ int main(void){
 
 
 #if false
-	Map *map = map_new(2048);
-	if (map == NULL) {
-		fprintf(stderr, "Map is null");
-		return 1;
-	}
-
 	{
-#if false
-		uint32_t key = 1234;
-		size_t klen = sizeof(uint32_t);
-		uint32_t value = 1234;
-		size_t vlen = sizeof(uint32_t);
-
-		size_t tests = 1000;
-		for (int i = 0; i < tests; ++i){
-			key = i;
-			value = i;
-			map_put(map, (uint8_t*)&key, klen, (uint8_t*)&value, vlen);
+		Map *map = map_new(2048);
+		if (map == NULL) {
+			fprintf(stderr, "Map is null");
+			return 1;
 		}
-		for (int i = 0; i < tests; ++i){
-			key = i;
-			map_get(map, (uint8_t*)&key, klen, (uint8_t*)&value, &vlen);
-			printf("resutl: %u: %u\n", key, value);
-			if (key != value){
-				printf("CLASH: %u: %u\n", key, value);
-				break;
+
+#if false
+		{
+			uint32_t key = 1234;
+			size_t klen = sizeof(uint32_t);
+			uint32_t value = 1234;
+			size_t vlen = sizeof(uint32_t);
+
+			size_t tests = 1000;
+			for (int i = 0; i < tests; ++i){
+				key = i;
+				value = i;
+				map_put(map, (uint8_t*)&key, klen, (uint8_t*)&value, vlen);
+			}
+			for (int i = 0; i < tests; ++i){
+				key = i;
+				map_get(map, (uint8_t*)&key, klen, (uint8_t*)&value, &vlen);
+				printf("resutl: %u: %u\n", key, value);
+				if (key != value){
+					printf("CLASH: %u: %u\n", key, value);
+					break;
+				}
 			}
 		}
 #endif

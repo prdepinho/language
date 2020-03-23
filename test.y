@@ -11,19 +11,19 @@
 
 extern FILE *yyin;
 
+// Virtual machine
 VM *vm;
 bool interactive_mode;		// when input is from stdin and executing them at once.
-Array *scope_stack;			// keeps track of the scope of variables.
-Map *variables;				// maps variable names with their place in the stack.
-Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
-size_t vcount;				// up to where variables have been declared in the stack.
 
-// clean the stack of constants.
-void clean_stack() {
-	for (Addr i = vm->stack->length; i > vcount; i--) {
-		vm_push_cmd_pop(vm);
-	}
-}
+// Variable handling
+Array *scope_stack;			// keeps track of identifiers positions for each scope level.
+Array *identifiers;			// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
+Map *variables;				// maps variable names with their place in the machine stack.
+size_t ccount;				// count how many constants have been used for each sentence.
+
+// null pointer
+Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
+
 
 void exit_program(int status_code) {
 	if (variables != NULL)
@@ -32,6 +32,8 @@ void exit_program(int status_code) {
 		vm_delete(vm);
 	if (scope_stack != NULL)
 		array_delete(scope_stack);
+	if (identifiers != NULL)
+		array_delete(identifiers);
 	fclose(yyin);
 	printf("Good bye.\n");
 	exit(status_code);
@@ -65,7 +67,7 @@ int main(int argc, const char **argv) {
 	// initialization
 	int rval = 0;
 	{
-		vcount = 1;
+		ccount = 0;
 		variables = NULL;
 		vm = NULL;
 
@@ -86,6 +88,13 @@ int main(int argc, const char **argv) {
 		scope_stack = array_new(sizeof(size_t), 0);
 		if (scope_stack == NULL) {
 			printf("scope_stack is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
+		identifiers = array_new(sizeof(char *), 0);
+		if (identifiers == NULL) {
+			printf("identifiers is null.\n");
 			rval = 1;
 			goto main_end;
 		}
@@ -121,7 +130,7 @@ main_end:
 %type <int_value> vm_command_int_param
 %type <float_value> vm_command_float_param
 
-%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT
+%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT DUMP
 %left '+' '-'
 %left '*' '/' '%'
 %left '^'
@@ -143,14 +152,20 @@ sentences
 		if (interactive_mode) {
 			vm_run(vm);
 		}
-		clean_stack();
+		// clean stack from constants
+		for (; ccount > 0; ccount--) {
+			vm_push_cmd_pop(vm);
+		}
 	}
 	| sentences assignment end_sentence
 	{
 		if (interactive_mode) {
 			vm_run(vm);
 		}
-		clean_stack();
+		// clean stack from constants
+		for (; ccount > 0; ccount--) {
+			vm_push_cmd_pop(vm);
+		}
 	}
 	| sentences expression end_sentence
 	{
@@ -173,7 +188,10 @@ sentences
 				break;
 			}
 		}
-		clean_stack();
+		// clean stack from constants
+		for (; ccount > 0; ccount--) {
+			vm_push_cmd_pop(vm);
+		}
 	}
 	| sentences error end_sentence
 	{
@@ -203,21 +221,26 @@ block
 start_block
 	: '{'
 	{
-		size_t level = array_push(scope_stack, &vm->stack->length);
-		printf("start scope: level: %lu, stack: %lu\n", level, vm->stack->length);
+		size_t level = array_push(scope_stack, &identifiers->length);
+		printf("start scope: level: %lu, identifiers: %lu\n", level, identifiers->length);
 	}
 	;
 
 end_block
 	: '}'
 	{
-		size_t count = 0;
-		size_t level = array_pop(scope_stack, &count);
-		printf("end scope: level: %lu, stack: %lu\n", level, vm->stack->length);
+		size_t position = 0;
+		array_pop(scope_stack, &position);
+		printf("returning to %lu from %lu\n", position, identifiers->length);
 
-		// This removes from the stack all variables in the scope, but they are still in the map.
-		// If you refer to them again outside the scope, what happens is undefined behavior.
-		for (Addr i = vm->stack->length; i > count; i--) {
+		for (Addr i = identifiers->length; i > position; i--) {
+			// remove variables from stack and from map (compile time)
+			char *vname = NULL;
+			array_pop(identifiers, &vname);
+			map_remove(variables, vname, strlen(vname));
+			free(vname);
+
+			// pop from machine stack (run time)
 			vm_push_cmd_pop(vm);
 		}
 	}
@@ -254,17 +277,16 @@ label
 	{
 		char *identifier = $1;
 
+		array_push(identifiers, &identifier);
+
 		map_put (
 			variables,
 			identifier, strlen(identifier),
-			&vcount, sizeof(vcount)
+			&identifiers->length, sizeof(identifiers->length)
 		);
-		vcount++;
 
-		Command cmd;
-		vm_push_cmd(vm, cmd);
-
-		free(identifier);
+		Addr addr = vm_push_cmd_push(vm);
+		vm_push_cmd_set_uint(vm, identifiers->length, addr);
 	}
 
 declaration
@@ -273,56 +295,49 @@ declaration
 		char *identifier = $1;
 		int type = $3;
 
+		array_push(identifiers, &identifier);
+
 		map_put (
 			variables,
 			identifier, strlen(identifier),
-			&vcount, sizeof(vcount)
+			&identifiers->length, sizeof(identifiers->length)
 		);
-		vcount++;
 
-		Command cmd;
+		vm_push_cmd_push(vm);
+
 		switch (type) {
 		case TYPE_BYTE:
-			cmd.code = CMD_SET_BYTE;
-			cmd.addr = vm_push_byte(vm, 0);
-			cmd.byte_arg = 0;
+			vm_push_cmd_set_byte(vm, identifiers->length, 0);
 			break;
 		case TYPE_UINT:
-			cmd.code = CMD_SET_UINT;
-			cmd.addr = vm_push_uint(vm, 0);
-			cmd.uint_arg = 0;
+			vm_push_cmd_set_uint(vm, identifiers->length, 0);
 			break;
 		case TYPE_INT:
-			cmd.code = CMD_SET_INT;
-			cmd.addr = vm_push_int(vm, 0);
-			cmd.int_arg = 0;
+			vm_push_cmd_set_int(vm, identifiers->length, 0);
 			break;
 		case TYPE_FLOAT:
-			cmd.code = CMD_SET_FLOAT;
-			cmd.addr = vm_push_float(vm, 0.0);
-			cmd.float_arg = 0.0;
+			vm_push_cmd_set_float(vm, identifiers->length, 0.0);
 			break;
 		}
-		vm_push_cmd(vm, cmd);
-
-		free(identifier);
 	}
 	| IDENTIFIER ':' type '=' expression
+	{
+#if false
 	{
 		char *identifier = $1;
 		int type = $3;
 		Addr rregaddr = $5;
 
+		array_push(identifiers, &identifier);
+
 		map_put (
 			variables,
 			identifier, strlen(identifier),
-			&vcount, sizeof(vcount)
+			&identifiers->length, sizeof(identifiers->length)
 		);
 
 		Register lreg = vm_get(vm, vcount);
 		Register rreg = vm_get(vm, rregaddr);
-
-		vcount++;
 
 		Command cmd;
 		switch (lreg.type) {
@@ -415,13 +430,15 @@ declaration
 			break;
 		}
 		vm_push_cmd(vm, cmd);
-
-		free(identifier);
+	}
+#endif
 	}
 	;
 
 assignment
 	: IDENTIFIER '=' expression
+	{
+#if false
 	{
 		char *identifier = $1;
 		Addr rregaddr = $3;
@@ -522,20 +539,135 @@ assignment
 assignment_end:
 		free(identifier);
 	}
+#else 
+	{
+		char *identifier = $1;
+		Addr rregaddr = $3;
+
+		Addr lregaddr;
+		size_t size;
+		if (map_get (
+			variables,
+			identifier, strlen(identifier),
+			&lregaddr, &size
+		))
+		{
+			printf("Identifier '%s' undeclared.\n", identifier);
+			goto assignment_end;
+		}
+
+		Register lreg = vm_get(vm, lregaddr);
+		Register rreg = vm_get(vm, rregaddr);
+
+		Command cmd;
+		cmd.addr = lregaddr;
+
+		switch (lreg.type) {
+		case TYPE_BYTE:
+			cmd.code = CMD_SET_BYTE;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.byte_arg = rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.byte_arg = (Byte) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.byte_arg = (Byte) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.byte_arg = (Byte) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_UINT:
+			cmd.code = CMD_SET_UINT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.uint_arg = (UInt) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.uint_arg = rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.uint_arg = (UInt) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.uint_arg = (UInt) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_INT:
+			cmd.code = CMD_SET_INT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.int_arg = (Int) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.int_arg = (Int) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.int_arg = rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.int_arg = (Int) rreg.float_value;
+				break;
+			}
+			break;
+
+		case TYPE_FLOAT:
+			cmd.code = CMD_SET_FLOAT;
+			switch (rreg.type) {
+			case TYPE_BYTE:
+				cmd.float_arg = (Float) rreg.byte_value;
+				break;
+			case TYPE_UINT:
+				cmd.float_arg = (Float) rreg.uint_value;
+				break;
+			case TYPE_INT:
+				cmd.float_arg = (Float) rreg.int_value;
+				break;
+			case TYPE_FLOAT:
+				cmd.float_arg = rreg.float_value;
+				break;
+			}
+			break;
+		}
+		vm_push_cmd(vm, cmd);
+
+assignment_end:
+		free(identifier);
+	}
+#endif
+	}
 	;
 
 expression
 	: INT_LITERAL
 	{
+#if false
 		$$ = vm_push_int(vm, $1);
+#endif
+		ccount++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_set_int(vm, -ccount, $1);
+		$$ = -ccount;
 	}
 	| FLOAT_LITERAL
 	{
-		$$ = vm_push_float(vm, $1);
+		ccount++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_set_float(vm, -ccount, $1);
+		$$ = -ccount;
 	}
 	| HEX_LITERAL
 	{
-		$$ = vm_push_int(vm, $1);
+		ccount++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_set_int(vm, -ccount, $1);
+		$$ = -ccount;
 	}
 	| STRING_LITERAL
 	{
@@ -687,6 +819,65 @@ command
 			break;
 		}
 print_end:;
+	}
+	| DUMP
+	{
+		// print scope stack
+		printf("scope_stack: %lu {", scope_stack->length);
+		for (int i = 0; i < scope_stack->length; i++) {
+			Addr addr;
+			array_get(scope_stack, i, &addr);
+			printf(" %lu", addr);
+		}
+		printf(" }\n");
+
+		// print identifiers
+		printf("identifiers: %lu\n", identifiers->length);
+		for (int i = 0; i < identifiers->length; i++) {
+			
+			char *vname = NULL;
+			array_get(identifiers, i, &vname);
+
+			Addr addr;
+			size_t addr_size;
+			if (map_get(variables,
+				vname, strlen(vname),
+				&addr, &addr_size
+			))
+			{
+				printf("Identifier '%s' undeclared.\n", vname);
+				goto dump_end;
+			}
+
+			Register reg = vm_get(vm, addr);
+
+			if (array_contains(scope_stack, &i))
+				printf("%d: > ", i);
+			else
+				printf("%d:   ", i);
+
+			printf("%s #%li ", vname, addr);
+			switch (reg.type) {
+			case TYPE_BYTE:
+				printf("(byte) %d\n", reg.byte_value);
+				break;
+			case TYPE_UINT:
+				printf("(uint) %lu\n", reg.uint_value);
+				break;
+			case TYPE_INT:
+				printf("(int) %ld\n", reg.int_value);
+				break;
+			case TYPE_FLOAT:
+				printf("(float) %f\n", reg.float_value);
+				break;
+			default:
+				printf("default\n");
+				break;
+			}
+
+		}
+dump_end:
+		printf("dump end\n");
 	}
 	;
 

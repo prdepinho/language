@@ -105,31 +105,32 @@ void vm_clear_commands(VM *vm);
 
 // The following vm_push_cmd_* functions are there to help push commands to the machine.
 // Parameters addr, addr_arg and raddr are absolute addresses and refer to the stack.
+// Returns the pushed command's index in the commands list.
 
-void vm_push_cmd_set_byte(VM *vm, Addr addr, Byte byte_arg); 
-void vm_push_cmd_set_int(VM *vm, Addr addr, Int int_arg); 
-void vm_push_cmd_set_uint(VM *vm, Addr addr, UInt uint_arg); 
-void vm_push_cmd_set_float(VM *vm, Addr addr, Float float_arg); 
+Addr vm_push_cmd_set_byte(VM *vm, Addr addr, Byte byte_arg); 
+Addr vm_push_cmd_set_int(VM *vm, Addr addr, Int int_arg); 
+Addr vm_push_cmd_set_uint(VM *vm, Addr addr, UInt uint_arg); 
+Addr vm_push_cmd_set_float(VM *vm, Addr addr, Float float_arg); 
 
-void vm_push_cmd_add(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
-void vm_push_cmd_sub(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
-void vm_push_cmd_mult(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
-void vm_push_cmd_div(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
+Addr vm_push_cmd_add(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
+Addr vm_push_cmd_sub(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
+Addr vm_push_cmd_mult(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
+Addr vm_push_cmd_div(VM *vm, Addr addr, Addr addr_arg, Addr raddr); 
 
-void vm_push_cmd_jump(VM *vm, Addr addr);
-void vm_push_cmd_jcond(VM *vm, Addr addr, Addr addr_arg); 
+Addr vm_push_cmd_jump(VM *vm, Addr addr);
+Addr vm_push_cmd_jcond(VM *vm, Addr addr, Addr addr_arg); 
 
-void vm_push_cmd_push(VM *vm);
-void vm_push_cmd_pop(VM *vm);
+Addr vm_push_cmd_push(VM *vm);
+Addr vm_push_cmd_pop(VM *vm);
 
-void vm_push_cmd_and(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
-void vm_push_cmd_or(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
-void vm_push_cmd_xor(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
-void vm_push_cmd_not(VM *vm, Addr addr, Addr raddr);
+Addr vm_push_cmd_and(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_or(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_xor(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_not(VM *vm, Addr addr, Addr raddr);
 
-void vm_push_cmd_stack(VM *vm);
-void vm_push_cmd_commands(VM *vm);
-void vm_push_cmd_print(VM *vm, Addr addr);
+Addr vm_push_cmd_stack(VM *vm);
+Addr vm_push_cmd_commands(VM *vm);
+Addr vm_push_cmd_print(VM *vm, Addr addr);
 
 
 // Private functions:
