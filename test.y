@@ -15,23 +15,94 @@ extern FILE *yyin;
 VM *vm;
 bool interactive_mode;		// when input is from stdin and executing them at once.
 
+// Machine stack handling
+Array *stack_scope;			// keeps track of machine stack positions for each scope level.
+size_t stack_track;			// keep track in compile time of the size of the machine stack.
+
 // Variable handling
-Array *scope_stack;			// keeps track of identifiers positions for each scope level.
 Array *identifiers;			// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
 Map *variables;				// maps variable names with their place in the machine stack.
-size_t stack_track;			// keep track in compile time of the size of the machine stack.
+Array *identifiers_scope;	// keeps track of identifiers positions for each scope level.
 
 // null pointer
 Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
 
+void dump() {
+	// print scope stack
+	printf("stack_scope: %lu {", stack_scope->length);
+	for (int i = 0; i < stack_scope->length; i++) {
+		Addr addr;
+		array_get(stack_scope, i, &addr);
+		printf(" %lu", addr);
+	}
+	printf(" }\n");
+
+	printf("identifiers_scope: %lu {", identifiers_scope->length);
+	for (int i = 0; i < identifiers_scope->length; i++) {
+		Addr addr;
+		array_get(identifiers_scope, i, &addr);
+		printf(" %lu", addr);
+	}
+	printf(" }\n");
+
+	// print identifiers
+	printf("identifiers: %lu\n", identifiers->length);
+	for (int i = 0; i < identifiers->length; i++) {
+		
+		char *vname = NULL;
+		array_get(identifiers, i, &vname);
+
+		Addr addr;
+		size_t addr_size;
+		if (map_get(variables,
+			vname, strlen(vname),
+			&addr, &addr_size
+		))
+		{
+			printf("Identifier '%s' undeclared.\n", vname);
+			goto dump_end;
+		}
+
+		Register reg = vm_get(vm, addr);
+
+		if (array_contains(identifiers_scope, &i))
+			printf("_ %4d: ", i);
+		else
+			printf("  %4d: ", i);
+
+		printf("#%-4li ", addr); 
+		switch (reg.type) {
+		case TYPE_BYTE:
+			printf("(byte)    %-15s %10d\n", vname, reg.byte_value);
+			break;
+		case TYPE_UINT:
+			printf("(uint)    %-15s %10lu\n", vname, reg.uint_value);
+			break;
+		case TYPE_INT:
+			printf("(int)     %-15s %10ld\n", vname, reg.int_value);
+			break;
+		case TYPE_FLOAT:
+			printf("(float)   %-15s %10f\n", vname, reg.float_value);
+			break;
+		default:
+			printf("default\n");
+			break;
+		}
+
+	}
+dump_end:
+	printf("dump end\n");
+}
 
 void exit_program(int status_code) {
 	if (variables != NULL)
 		map_delete(variables);
 	if (vm != NULL)
 		vm_delete(vm);
-	if (scope_stack != NULL)
-		array_delete(scope_stack);
+	if (stack_scope != NULL)
+		array_delete(stack_scope);
+	if (identifiers_scope != NULL)
+		array_delete(identifiers_scope);
 	if (identifiers != NULL)
 		array_delete(identifiers);
 	fclose(yyin);
@@ -85,9 +156,16 @@ int main(int argc, const char **argv) {
 			goto main_end;
 		}
 
-		scope_stack = array_new(sizeof(size_t), 0);
-		if (scope_stack == NULL) {
-			printf("scope_stack is null.\n");
+		stack_scope = array_new(sizeof(size_t), 0);
+		if (stack_scope == NULL) {
+			printf("stack_scope is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
+		identifiers_scope = array_new(sizeof(size_t), 0);
+		if (identifiers_scope == NULL) {
+			printf("identifiers_scope is null.\n");
 			rval = 1;
 			goto main_end;
 		}
@@ -140,8 +218,10 @@ main_end:
 program
 	: sentences
 	{
-		if (!interactive_mode)
+		if (!interactive_mode) {
+			printf("Finished compiling, now running.\n");
 			vm_run(vm);
+		}
 	}
 	;
 
@@ -202,15 +282,16 @@ sentences
 block
 	: start_block sentences end_block
 	{
-		printf("a block\n");
 	}
 	;
 
 start_block
 	: '{'
 	{
-		size_t level = array_push(scope_stack, &stack_track);
-		printf("start scope: level: %lu, stack_track: %lu\n", level, stack_track);
+		size_t level = array_push(stack_scope, &stack_track);
+		array_push(identifiers_scope, &identifiers->length);
+		printf("start scope: level: %lu, stack_track: %lu, identifiers->length: %lu\n",
+			level, stack_track, identifiers->length);
 	}
 	;
 
@@ -218,18 +299,24 @@ end_block
 	: '}'
 	{
 		size_t position = 0;
-		array_pop(scope_stack, &position);
-		printf("returning to %lu from %lu\n", position, stack_track);
+		array_pop(stack_scope, &position);
+		printf("scope returning to %lu from %lu\n", position, stack_track);
 
 		for (; stack_track > position; stack_track--) {
+			// pop from machine stack (run time)
+			vm_push_cmd_pop(vm);
+		}
+
+		position = 0;
+		array_pop(identifiers_scope, &position);
+		printf("identifiers returning to %lu from %lu\n", position, identifiers->length);
+
+		for (int i = identifiers->length; i > position; i--) {
 			// remove variables from stack and from map (compile time)
 			char *vname = NULL;
 			array_pop(identifiers, &vname);
 			map_remove(variables, vname, strlen(vname));
 			free(vname);
-
-			// pop from machine stack (run time)
-			vm_push_cmd_pop(vm);
 		}
 	}
 	;
@@ -284,16 +371,17 @@ declaration
 		char *identifier = $1;
 		int type = $3;
 
-		stack_track++;
 		array_push(identifiers, &identifier);
+
+		vm_push_cmd_push(vm);
+
+		stack_track++;
 
 		map_put (
 			variables,
 			identifier, strlen(identifier),
 			&stack_track, sizeof(stack_track)
 		);
-
-		vm_push_cmd_push(vm);
 
 		switch (type) {
 		case TYPE_BYTE:
@@ -316,16 +404,31 @@ declaration
 		int type = $3;
 		Addr rregaddr = $5;
 
-		stack_track++;
 		array_push(identifiers, &identifier);
 
+		vm_push_cmd_push(vm);
+
+		stack_track++;
 		map_put (
 			variables,
 			identifier, strlen(identifier),
 			&stack_track, sizeof(stack_track)
 		);
 
-		vm_push_cmd_push(vm);
+		switch (type) {
+		case TYPE_BYTE:
+			vm_push_cmd_set_byte(vm, stack_track, 0);
+			break;
+		case TYPE_UINT:
+			vm_push_cmd_set_uint(vm, stack_track, 0);
+			break;
+		case TYPE_INT:
+			vm_push_cmd_set_int(vm, stack_track, 0);
+			break;
+		case TYPE_FLOAT:
+			vm_push_cmd_set_float(vm, stack_track, 0.0);
+			break;
+		}
 
 		vm_push_cmd_assign(vm, stack_track, rregaddr);
 	}
@@ -381,17 +484,10 @@ expression
 	}
 	| STRING_LITERAL
 	{
-		// Variable var;
-		// set_string_literal(&var, $1);
 		free($1);
-		// $$ = var;
 	}
 	| boolean
 	{
-		// Variable var;
-		// var.type = TYPE_BOOL;
-		// var.bool_value = $1;
-		// $$ = var;
 	}
 	| IDENTIFIER
 	{
@@ -415,15 +511,10 @@ expression
 	| '-' expression
 	{
 		Addr addr = $2;
-
-		Command cmd;
-		cmd.code = CMD_MULT;
-		cmd.addr = addr;
-		cmd.addr_arg = vm_push_int(vm, -1);
-		cmd.raddr = vm_push_int(vm, 0);
-		vm_push_cmd(vm, cmd);
-
-		$$ = cmd.raddr;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_sub(vm, 0, addr, stack_track);
+		$$ = stack_track;
 	}
 	| '(' expression ')'
 	{
@@ -434,56 +525,37 @@ expression
 		Addr lvaladdr = $1;
 		Addr rvaladdr = $3;
 
-		Command cmd;
-		cmd.code = CMD_ADD;
-		cmd.addr = lvaladdr;
-		cmd.addr_arg = rvaladdr;
-		cmd.raddr = vm_push_int(vm, 0);
-		vm_push_cmd(vm, cmd);
-
-		$$ = cmd.raddr;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_add(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
 	}
 	| expression '-' expression
 	{
 		Addr lvaladdr = $1;
 		Addr rvaladdr = $3;
-
-		Command cmd;
-		cmd.code = CMD_SUB;
-		cmd.addr = lvaladdr;
-		cmd.addr_arg = rvaladdr;
-		cmd.raddr = vm_push_int(vm, 0);
-		vm_push_cmd(vm, cmd);
-
-		$$ = cmd.raddr;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_sub(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
 	}
 	| expression '*' expression
 	{
 		Addr lvaladdr = $1;
 		Addr rvaladdr = $3;
-
-		Command cmd;
-		cmd.code = CMD_MULT;
-		cmd.addr = lvaladdr;
-		cmd.addr_arg = rvaladdr;
-		cmd.raddr = vm_push_int(vm, 0);
-		vm_push_cmd(vm, cmd);
-
-		$$ = cmd.raddr;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_mult(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
 	}
 	| expression '/' expression
 	{
 		Addr lvaladdr = $1;
 		Addr rvaladdr = $3;
-
-		Command cmd;
-		cmd.code = CMD_DIV;
-		cmd.addr = lvaladdr;
-		cmd.addr_arg = rvaladdr;
-		cmd.raddr = vm_push_int(vm, 0);
-		vm_push_cmd(vm, cmd);
-
-		$$ = cmd.raddr;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_div(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
 	}
 	| expression '%' expression
 	{
@@ -509,85 +581,14 @@ command
 		))
 		{
 			printf("Identifier '%s' undeclared.\n", identifier);
-			goto print_end;
 		}
-
-		Register reg = vm_get(vm, addr);
-		printf("%s (%li): ", identifier, addr);
-		switch (reg.type) {
-		case TYPE_BYTE:
-			printf("%d\n", reg.byte_value);
-			break;
-		case TYPE_UINT:
-			printf("%lu\n", reg.uint_value);
-			break;
-		case TYPE_INT:
-			printf("%ld\n", reg.int_value);
-			break;
-		case TYPE_FLOAT:
-			printf("%f\n", reg.float_value);
-			break;
+		else {
+			vm_push_cmd_print(vm, addr);
 		}
-print_end:;
 	}
 	| DUMP
 	{
-		// print scope stack
-		printf("scope_stack: %lu {", scope_stack->length);
-		for (int i = 0; i < scope_stack->length; i++) {
-			Addr addr;
-			array_get(scope_stack, i, &addr);
-			printf(" %lu", addr);
-		}
-		printf(" }\n");
-
-		// print identifiers
-		printf("identifiers: %lu\n", identifiers->length);
-		for (int i = 0; i < identifiers->length; i++) {
-			
-			char *vname = NULL;
-			array_get(identifiers, i, &vname);
-
-			Addr addr;
-			size_t addr_size;
-			if (map_get(variables,
-				vname, strlen(vname),
-				&addr, &addr_size
-			))
-			{
-				printf("Identifier '%s' undeclared.\n", vname);
-				goto dump_end;
-			}
-
-			Register reg = vm_get(vm, addr);
-
-			if (array_contains(scope_stack, &i))
-				printf("_ %4d: ", i);
-			else
-				printf("  %4d: ", i);
-
-			printf("#%-4li ", addr); 
-			switch (reg.type) {
-			case TYPE_BYTE:
-				printf("(byte)    %-15s %10d\n", vname, reg.byte_value);
-				break;
-			case TYPE_UINT:
-				printf("(uint)    %-15s %10lu\n", vname, reg.uint_value);
-				break;
-			case TYPE_INT:
-				printf("(int)     %-15s %10ld\n", vname, reg.int_value);
-				break;
-			case TYPE_FLOAT:
-				printf("(float)   %-15s %10f\n", vname, reg.float_value);
-				break;
-			default:
-				printf("default\n");
-				break;
-			}
-
-		}
-dump_end:
-		printf("dump end\n");
+		dump();
 	}
 	;
 

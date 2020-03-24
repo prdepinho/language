@@ -1,6 +1,34 @@
 #include "hash.h"
 #include <stdio.h>
 
+#if DEBUG
+static void print_bucket(Bucket *bucket) {
+	char *string = (char*)malloc(sizeof(char) * bucket->klen);
+	strncpy(string, (char*)bucket->key, bucket->klen);
+	long value;
+	memcpy(&value, bucket->value, sizeof(value));
+	printf("%10s: %ld\n", string, value);
+	free(string);
+}
+
+static void print_buckets(Bucket *buckets, size_t length) {
+	printf("map length: %lu {\n", length);
+
+	for (int i = 0; i < length; i++) {
+		printf("%5d: ", i);
+		Bucket *bucket = &buckets[i];
+
+		if (bucket->key != 0) {
+			print_bucket(bucket);
+		}
+		else {
+			printf("%10s\n", "-");
+		}
+	}
+	printf("}\n");
+}
+#endif
+
 static int map_extend(Map *map){
 	size_t old_length = map->length;
 	size_t new_length = (map->length > 0) ? map->length * map->length : 2;
@@ -9,6 +37,7 @@ static int map_extend(Map *map){
 	Bucket *new_buckets = (Bucket*) malloc(new_length * sizeof(Bucket));
 	if (new_buckets == NULL)
 		return 1;
+	memset(new_buckets, 0, new_length * sizeof(Bucket));
 
 	map->buckets = new_buckets;
 	map->length = new_length;
@@ -40,7 +69,7 @@ Map *map_new(size_t length){
 
 	size_t power = 0;
 	uint32_t mask = 1;
-	while((length >> power) != 1) { mask <<= 1; mask += 1; power++; }
+	while((length >> power) != 1) { mask <<= 1; mask++; power++; }
 	mask >>= 1;
 	map->hash_mask = mask;
 
@@ -73,13 +102,15 @@ int map_put(Map *map,
 	uint32_t hash = complete_hash & map->hash_mask;
 
 	uint32_t home_hash = hash;
+
 	while (
 			map->buckets[hash].key != 0 &&
 			memcmp(map->buckets[hash].key, key, klen) != 0
 	) {
 		hash = (hash + 1) % map->length;
-		if (hash == home_hash)
+		if (hash == home_hash) {
 			map_extend(map);
+		}
 	}
 
 #ifdef DEBUG

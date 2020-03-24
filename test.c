@@ -136,7 +136,7 @@ int main(void){
 	}
 #endif
 
-#if true
+#if false
 	{
 		printf("test\n");
 		Array *stack = array_new(sizeof(int), 0);
@@ -167,7 +167,7 @@ int main(void){
 	}
 #endif
 
-#if false
+#if true
 	{
 		Map *map = map_new(2);
 		if (map == NULL){

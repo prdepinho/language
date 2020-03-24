@@ -1,14 +1,12 @@
+a:int
+b:int
+c:int
+d:int
+e:int
+f:int
+h:int
+i:int
+j:int
 
-# a:int = 10
-# b:float = 3.14
-# c:float = a+b
-
-# PRINT a
-# PRINT b
-# PRINT c
-
-# STACK
-
-
-a:byte = 10
-COMMANDS
+# COMMANDS
+STACK
