@@ -241,9 +241,31 @@ map_array_test_end:
 				int i = 0;
 				array_peek(array, &i);
 				printf("array length: %lu\n", array->length);
-				printf("i: %d\n", i);
+				printf("get array then peek i: %d\n", i);
 			}
 
+		}
+
+
+		{
+			int i = 1234;
+			map_array_push(map, "spam", 5, &i);
+		}
+		{
+			int i = 7777;
+			map_array_set(map, "spam", 5, 1, &i);
+		}
+
+		{
+			int i = 0;
+			map_array_peek(map, "spam", 5, &i);
+			printf("peek i: %d\n", i);
+		}
+
+		{
+			int i = 0;
+			map_array_get(map, "spam", 5, 0, &i);
+			printf("get i: %d\n", i);
 		}
 
 map_array_class_test_end:

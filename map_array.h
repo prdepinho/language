@@ -6,7 +6,8 @@
 
 /*
  * A map that maps any key type to an array type. 
- * Methods in this class take care of creating, managing and destroying its array values. 
+ * Methods that access a mapped array create a new array if it was null.
+ * These arrays are destroyed by map_array_delete.
  * */
 typedef struct MapArray {
 	Map *map;
@@ -28,5 +29,21 @@ int map_array_get_array(MapArray *map,
 int map_array_push(MapArray *map,
 		const void *key, size_t klen,
 		void *element);
+
+int map_array_set(MapArray *map,
+		const void *key, size_t klen,
+		int index, void *element);
+
+int map_array_get(MapArray *map,
+		const void *key, size_t klen,
+		int index, void *out_element);
+
+int map_array_peek(MapArray *map,
+		const void *key, size_t klen,
+		void *out_element);
+
+int map_array_pop(MapArray *map,
+		const void *key, size_t klen,
+		void *out_element);
 
 #endif /* __MAP_ARRAY_H__ */
