@@ -24,6 +24,8 @@ Array *identifiers;			// keeps track of identifiers, that is, variable, labels, 
 Map *variables;				// maps variable names with their place in the machine stack.
 Array *identifiers_scope;	// keeps track of identifiers positions for each scope level.
 
+Map *labels;				// maps jump labels and the list of their positions in the commands.
+
 // null pointer
 Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
 
@@ -54,7 +56,7 @@ void dump() {
 
 		Addr addr;
 		size_t addr_size;
-		if (map_get(variables,
+		if (!map_get(variables,
 			vname, strlen(vname),
 			&addr, &addr_size
 		))
@@ -105,6 +107,8 @@ void exit_program(int status_code) {
 		array_delete(identifiers_scope);
 	if (identifiers != NULL)
 		array_delete(identifiers);
+	if (labels != NULL)
+		map_delete(labels);
 	fclose(yyin);
 	printf("Good bye.\n");
 	exit(status_code);
@@ -177,6 +181,13 @@ int main(int argc, const char **argv) {
 			goto main_end;
 		}
 
+		labels = map_new(2);
+		if (labels == NULL) {
+			printf("Labels is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
 		null_addr = vm_push_int(vm, 0);
 	}
 
@@ -208,7 +219,7 @@ main_end:
 %type <int_value> vm_command_int_param
 %type <float_value> vm_command_float_param
 
-%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT DUMP
+%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT DUMP GOTO
 %left '+' '-'
 %left '*' '/' '%'
 %left '^'
@@ -270,6 +281,25 @@ sentences
 	| sentences function_declaration end_sentence
 	| sentences command end_sentence
 	| sentences vm_command end_sentence
+	| sentences GOTO IDENTIFIER end_sentence
+	{
+		char *identifier = $3;
+
+		Addr addr;
+		size_t size;
+		if (map_get(
+			variables,
+			identifier, strlen(identifier),
+			&addr, &size
+		)) {
+			vm_push_cmd_jump(vm, addr);
+		}
+		else {
+			printf("Jump Identifier '%s' is undeclared.\n", identifier);
+		}
+
+		free(identifier);
+	}
 	{
 		// if it is interactive mode, execute after each line.
 		if (interactive_mode) {
@@ -290,8 +320,6 @@ start_block
 	{
 		size_t level = array_push(stack_scope, &stack_track);
 		array_push(identifiers_scope, &identifiers->length);
-		printf("start scope: level: %lu, stack_track: %lu, identifiers->length: %lu\n",
-			level, stack_track, identifiers->length);
 	}
 	;
 
@@ -300,7 +328,6 @@ end_block
 	{
 		size_t position = 0;
 		array_pop(stack_scope, &position);
-		printf("scope returning to %lu from %lu\n", position, stack_track);
 
 		for (; stack_track > position; stack_track--) {
 			// pop from machine stack (run time)
@@ -309,7 +336,6 @@ end_block
 
 		position = 0;
 		array_pop(identifiers_scope, &position);
-		printf("identifiers returning to %lu from %lu\n", position, identifiers->length);
 
 		for (int i = identifiers->length; i > position; i--) {
 			// remove variables from stack and from map (compile time)
@@ -352,17 +378,34 @@ label
 	{
 		char *identifier = $1;
 
-		stack_track++;
-		array_push(identifiers, &identifier);
-
-		map_put (
+#if false
+		if (!map_get (
 			variables,
 			identifier, strlen(identifier),
-			&stack_track, sizeof(stack_track)
-		);
+			&addr, &size
+		))
+		{
+			printf("Jump Identifier '%s' is undeclared. Creating it now.\n", identifier);
+			{
+				stack_track++;
+				array_push(identifiers, &identifier);
 
-		Addr addr = vm_push_cmd_push(vm);
-		vm_push_cmd_set_uint(vm, stack_track, addr);
+				map_put (
+					variables,
+					identifier, strlen(identifier),
+					&stack_track, sizeof(stack_track)
+				);
+
+				Addr addr = vm_push_cmd_push(vm);
+				vm_push_cmd_set_uint(vm, stack_track, addr);
+			}
+		}
+		else {
+			vm_push_cmd_jk
+		}
+#endif
+		free(identifier);
+
 	}
 
 declaration
@@ -443,7 +486,7 @@ assignment
 		Addr lregaddr;
 
 		size_t size;
-		if (map_get (
+		if (!map_get (
 			variables,
 			identifier, strlen(identifier),
 			&lregaddr, &size
@@ -495,7 +538,7 @@ expression
 		Addr addr;
 
 		size_t size;
-		if (map_get (
+		if (!map_get (
 			variables,
 			identifier, strlen(identifier),
 			&addr, &size
@@ -574,7 +617,7 @@ command
 		Addr addr;
 
 		size_t size;
-		if (map_get (
+		if (!map_get (
 			variables,
 			identifier, strlen(identifier),
 			&addr, &size

@@ -36,7 +36,7 @@ static int map_extend(Map *map){
 	Bucket *old_buckets = map->buckets;
 	Bucket *new_buckets = (Bucket*) malloc(new_length * sizeof(Bucket));
 	if (new_buckets == NULL)
-		return 1;
+		return 0;
 	memset(new_buckets, 0, new_length * sizeof(Bucket));
 
 	map->buckets = new_buckets;
@@ -57,7 +57,7 @@ static int map_extend(Map *map){
 	}
 	free(old_buckets);
 
-	return 0;
+	return 1;
 }
 
 Map *map_new(size_t length){
@@ -109,7 +109,8 @@ int map_put(Map *map,
 	) {
 		hash = (hash + 1) % map->length;
 		if (hash == home_hash) {
-			map_extend(map);
+			if (!map_extend(map))
+				return 0;
 		}
 	}
 
@@ -125,7 +126,7 @@ int map_put(Map *map,
 	map->buckets[hash].value = (uint8_t*) malloc(sizeof(uint8_t) * vlen);
 	memcpy(map->buckets[hash].value, value, vlen);
 	map->buckets[hash].vlen = vlen;
-	return 0;
+	return 1;
 }
 
 int map_get(Map *map,
@@ -143,15 +144,15 @@ int map_get(Map *map,
 
 		hash = (hash + 1) % map->length;
 		if (hash == home_hash)
-			return 1;
+			return 0;
 	}
 
 	if (map->buckets[hash].key == 0)
-		return 1;
+		return 0;
 
 	*out_vlen = map->buckets[hash].vlen;
 	memcpy(out_value, map->buckets[hash].value, *out_vlen);
-	return 0;
+	return 1;
 }
 
 int map_remove(Map *map,
@@ -168,18 +169,18 @@ int map_remove(Map *map,
 
 		hash = (hash + 1) % map->length;
 		if (hash == home_hash)
-			return 1;
+			return 0;
 	}
 
 	if (map->buckets[hash].key == 0)
-		return 1;
+		return 0;
 
 	free(map->buckets[hash].key);
 	map->buckets[hash].key = 0;
 	free(map->buckets[hash].value);
 	map->buckets[hash].value = 0;
 
-	return 0;
+	return 1;
 }
 
 /* Taken from Wikipedia no less. */

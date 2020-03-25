@@ -51,6 +51,7 @@ STACK						{return STACK;}
 COMMANDS					{return COMMANDS;}
 true						{return TRUE;}
 false						{return FALSE;}
+goto						{return GOTO;}
 [ \t]+						{/* ignore return WHITESPACE; */}
 #.+							{/* ignore return COMMENTS; */}
 \n							{return NEWLINE;}

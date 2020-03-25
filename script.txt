@@ -1,12 +1,17 @@
-a:int
-b:int
-c:int
-d:int
-e:int
-f:int
-h:int
-i:int
-j:int
+a:int = 10
+b:int = a + 1
+b = b + a
+{
+  c:int
+  d:int
+  e:int
+  f:int
+  g:float
+  STACK
+}
 
+PRINT a
+PRINT b
+
+# STACK
 # COMMANDS
-STACK

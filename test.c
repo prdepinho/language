@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "hash.h"
 #include "array.h"
+#include "map_array.h"
 #include "vm.h"
 
 int main(void){
@@ -167,32 +168,88 @@ int main(void){
 	}
 #endif
 
-#if true
+#if false
 	{
 		Map *map = map_new(2);
 		if (map == NULL){
 			fprintf(stderr, "Map is null\n");
-			return 1;
+			goto map_array_test_end;
 		}
 
-		int key;
-		size_t key_size = sizeof(int);
-		int value;
-		size_t value_size = sizeof(int);
+		// map "foo" and [42]
+		{
+			Array *array = array_new(sizeof(int), 0);
+			if (array == NULL) {
+				fprintf(stderr, "array is null\n");
+				goto map_array_test_end;
+			}
+
+			int i = 42;
+			array_push(array, &i);
+			map_put(map, "foo", 4, &array, sizeof(array));
+		}
+
+		// add 777 to the array
+		{
+			Array *array = NULL;
+			size_t array_size = 0;
+			map_get(map, "foo", 4, &array, &array_size);
+			int i = 777;
+			array_push(array, &i);
+		}
+
+		// get the values out of the array from the map
+		{
+			Array *array = NULL;
+			size_t array_size = 0;
+			!map_get(map, "foo", 4, &array, &array_size);
+
+			int i = 0;
+			for (int j = 0; j < array->length; j++) {
+				array_get(array, j, &i);
+				printf("i: %d\n", i);
+			}
+
+			if (array != NULL)
+				array_delete(array);
+		}
+
+
+map_array_test_end:
+		if (map != NULL)
+			map_delete(map);
+		return 0;
 		
-		for (int i = 0; i < 10; i++){
-			key = i * 10;
-			value = i * 20;
-			int rval = map_put(map, &key, key_size, &value, value_size);
-			printf("(%d) set map\n", rval);
+	}
+#endif
+#if true
+	{
+		MapArray *map = map_array_new(2, sizeof(int), 0);
+		if (map == NULL)
+			goto map_array_class_test_end;
+
+		{
+			int i = 120;
+			map_array_push(map, "spam", 5, &i);
 		}
 
-		for (int i = 0; i < 10; i++){
-			key = i * 10;
-			value = 0;
-			int rval = map_get(map, &key, key_size, &value, &value_size);
-			printf("(%d) get map %d: %d\n", rval, key, value);
+		{
+			Array *array = NULL;
+			if (!map_array_get_array(map, "spam", 5, &array))
+				printf("map_array_get fail\n");
+			else {
+				int i = 0;
+				array_peek(array, &i);
+				printf("array length: %lu\n", array->length);
+				printf("i: %d\n", i);
+			}
+
 		}
+
+map_array_class_test_end:
+		if (map != NULL)
+			map_array_delete(map);
+		return 0;
 	}
 #endif
 

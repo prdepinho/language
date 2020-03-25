@@ -23,6 +23,7 @@ typedef struct Map {
 Map *map_new(size_t length);
 void map_delete(Map *map);
 
+/* Functions return 1 on success, 0 on failure. */
 int map_put(Map *map,
 		const void *key, size_t klen,
 		const void *value, size_t vlen);
