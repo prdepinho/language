@@ -1,17 +1,11 @@
-a:int = 10
-b:int = a + 1
-b = b + a
-{
-  c:int
-  d:int
-  e:int
-  f:int
-  g:float
-  STACK
-}
+COMMANDS
+goto foo
 
+a:int = 10
+b:int = 1
+b = b + 50
 PRINT a
 PRINT b
 
+foo:
 # STACK
-# COMMANDS

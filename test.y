@@ -6,6 +6,7 @@
 #include <string.h>
 #include <math.h>
 #include "hash.h"
+#include "map_array.h"
 #include "vm.h"
 #include "types.h"
 
@@ -21,10 +22,10 @@ size_t stack_track;			// keep track in compile time of the size of the machine s
 
 // Variable handling
 Array *identifiers;			// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
-Map *variables;				// maps variable names with their place in the machine stack.
+Map *variables;				// maps variable names with their place in the machine stack. Labels are treated as variables.
 Array *identifiers_scope;	// keeps track of identifiers positions for each scope level.
 
-Map *labels;				// maps jump labels and the list of their positions in the commands.
+MapArray *labels;			// maps jump labels and the list of their positions in the commands.
 
 // null pointer
 Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
@@ -108,7 +109,7 @@ void exit_program(int status_code) {
 	if (identifiers != NULL)
 		array_delete(identifiers);
 	if (labels != NULL)
-		map_delete(labels);
+		map_array_delete(labels);
 	fclose(yyin);
 	printf("Good bye.\n");
 	exit(status_code);
@@ -181,7 +182,7 @@ int main(int argc, const char **argv) {
 			goto main_end;
 		}
 
-		labels = map_new(2);
+		labels = map_array_new(2, sizeof(Addr), 0);
 		if (labels == NULL) {
 			printf("Labels is null.\n");
 			rval = 1;
@@ -283,6 +284,8 @@ sentences
 	| sentences vm_command end_sentence
 	| sentences GOTO IDENTIFIER end_sentence
 	{
+		// if label is already defined in variables, set jump to that label's value;
+		// else, set jump to 0, and push its commands index to labels.
 		char *identifier = $3;
 
 		Addr addr;
@@ -293,12 +296,15 @@ sentences
 			&addr, &size
 		)) {
 			vm_push_cmd_jump(vm, addr);
+			free(identifier);
 		}
 		else {
 			printf("Jump Identifier '%s' is undeclared.\n", identifier);
+			vm_push_cmd_jump(vm, 0);
+			if (!map_array_push(labels, identifier, strlen(identifier), &vm->commands->length))
+				printf("label push failed.\n");
 		}
 
-		free(identifier);
 	}
 	{
 		// if it is interactive mode, execute after each line.
@@ -376,7 +382,47 @@ param_list_content
 label
 	: IDENTIFIER ':'
 	{
+		// define label in variables, if not already.
+		// if there is a goto label set in labels, change all mapped jump commands to jump to this address.
 		char *identifier = $1;
+
+		Addr addr = 0;
+		size_t size = 0;
+		if (map_get(
+			variables,
+			identifier, strlen(identifier),
+			&addr, &size
+		)) {
+			printf("Identifier %s already declared.\n", identifier);
+			exit_program(0);
+		}
+
+		array_push(identifiers, &identifier);
+
+		if (!map_put (
+			variables,
+			identifier, strlen(identifier),
+			&vm->commands->length, sizeof(vm->commands->length)
+		)){
+			printf("Could not push identifier %s to variables\n", identifier);
+			exit_program(0);
+		}
+
+		if (map_array_contains(labels, identifier, strlen(identifier))) {
+			Array *array = NULL;
+			map_array_get_array(labels, identifier, strlen(identifier), &array);
+
+			for (int i = 0; i < array->length; i++) {
+				Addr index = 0;
+				array_get(array, i, &index);
+
+				Command command;
+				array_get(vm->commands, index, &command);
+				command.addr = index;
+				array_set(vm->commands, index, &command);
+			}
+		}
+
 
 #if false
 		if (!map_get (
@@ -401,7 +447,6 @@ label
 			}
 		}
 		else {
-			vm_push_cmd_jk
 		}
 #endif
 		free(identifier);
@@ -567,7 +612,6 @@ expression
 	{
 		Addr lvaladdr = $1;
 		Addr rvaladdr = $3;
-
 		stack_track++;
 		vm_push_cmd_push(vm);
 		vm_push_cmd_add(vm, lvaladdr, rvaladdr, stack_track);

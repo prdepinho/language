@@ -20,6 +20,9 @@ typedef struct MapArray {
 MapArray *map_array_new(size_t map_initial_length, size_t array_element_size, size_t array_initial_length);
 void map_array_delete(MapArray *map);
 
+// return 1 for when map contains key, 0 otherwise.
+int map_array_contains(MapArray *map, const void *key, size_t klen);
+
 // return 1 for failure, 0 for success.
 int map_array_get_array(MapArray *map,
 		const void *key, size_t klen,

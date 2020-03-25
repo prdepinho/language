@@ -1,7 +1,7 @@
 CFLAGS=-g
 
 program: lex.yy.c test.tab.c semantics.o array.o hash.o map_array.o vm.o
-	cc -o program lex.yy.c test.tab.c semantics.o array.o hash.o vm.o -lm $(CFLAGS)
+	cc -o program lex.yy.c test.tab.c semantics.o array.o hash.o map_array.o vm.o -lm $(CFLAGS)
 
 lex.yy.c: test.l
 	flex test.l

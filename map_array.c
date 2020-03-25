@@ -33,6 +33,12 @@ void map_array_delete(MapArray *map) {
 	free(map);
 }
 
+int map_array_contains(MapArray *map, const void *key, size_t klen) {
+	void *value = NULL;
+	size_t vlen = 0;
+	return map_get(map->map, key, klen, &value, &vlen);
+}
+
 int map_array_get_array(MapArray *map,
 		const void *key, size_t klen,
 		Array **out_array)
