@@ -28,13 +28,13 @@ void *array_get(Array *array, int index, void *out_element);
 
 
 /* Push an element to the array. Return the element's index. */
-size_t array_push(Array *array, void *element);
+long array_push(Array *array, void *element);
 
 /* Get the element at the end of the array. Return the element's index. */
-size_t array_peek(Array *array, void *out_element);
+long array_peek(Array *array, void *out_element);
 
 /* Get and remove the element at the end of the array. Return the element's index. */
-size_t array_pop(Array *array, void *out_element);
+long array_pop(Array *array, void *out_element);
 
 /* Returns 1 if element is in the array, otherwise return 0. */
 int array_contains(Array *array, void *element);

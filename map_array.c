@@ -33,10 +33,14 @@ void map_array_delete(MapArray *map) {
 	free(map);
 }
 
-int map_array_contains(MapArray *map, const void *key, size_t klen) {
+int map_array_contains_array(MapArray *map, const void *key, size_t klen) {
 	void *value = NULL;
 	size_t vlen = 0;
 	return map_get(map->map, key, klen, &value, &vlen);
+}
+
+int map_array_remove_array(MapArray *map, const void *key, size_t klen) {
+	return map_remove(map->map, key, klen);
 }
 
 int map_array_get_array(MapArray *map,
@@ -57,39 +61,37 @@ int map_array_get_array(MapArray *map,
 	return 1;
 }
 
-int map_array_push(MapArray *map,
+long map_array_push(MapArray *map,
 		const void *key, size_t klen,
 		void *element)
 {
 	Array *array = NULL;
 	if (!map_array_get_array(map, key, klen, &array))
-		return 0;
+		return -1;
 	return array_push(array, element);
 }
 
-int map_array_set(MapArray *map,
+void *map_array_set(MapArray *map,
 		const void *key, size_t klen,
 		int index, void *element) 
 {
 	Array *array = NULL;
 	if (!map_array_get_array(map, key, klen, &array))
-		return 0;
-	array_set(array, index, element);
-	return 1;
+		return NULL;
+	return array_set(array, index, element);
 }
 
-int map_array_get(MapArray *map,
+void *map_array_get(MapArray *map,
 		const void *key, size_t klen,
 		int index, void *out_element)
 {
 	Array *array = NULL;
 	if (!map_array_get_array(map, key, klen, &array))
-		return 0;
-	array_get(array, index, out_element);
-	return 1;
+		return NULL;
+	return array_get(array, index, out_element);
 }
 
-int map_array_peek(MapArray *map,
+long map_array_peek(MapArray *map,
 		const void *key, size_t klen,
 		void *out_element)
 {
@@ -100,7 +102,7 @@ int map_array_peek(MapArray *map,
 	return array_peek(array, out_element);
 }
 
-int map_array_pop(MapArray *map,
+long map_array_pop(MapArray *map,
 		const void *key, size_t klen,
 		void *out_element)
 {
@@ -109,4 +111,14 @@ int map_array_pop(MapArray *map,
 	if (!map_array_get_array(map, key, klen, &array))
 		return -1;
 	return array_pop(array, out_element);
+}
+
+int map_array_contains(MapArray *map,
+		const void *key, size_t klen,
+		void *element)
+{
+	Array *array = NULL;
+	if (!map_array_get_array(map, key, klen, &array))
+		return 0;
+	return array_contains(array, element);
 }

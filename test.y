@@ -282,10 +282,17 @@ sentences
 	| sentences function_declaration end_sentence
 	| sentences command end_sentence
 	| sentences vm_command end_sentence
+	{
+		// if it is interactive mode, execute after each line.
+		if (interactive_mode) {
+			vm_run(vm);
+		}
+	}
 	| sentences GOTO IDENTIFIER end_sentence
 	{
 		// if label is already defined in variables, set jump to that label's value;
 		// else, set jump to 0, and push its commands index to labels.
+
 		char *identifier = $3;
 
 		Addr addr;
@@ -299,17 +306,13 @@ sentences
 			free(identifier);
 		}
 		else {
-			printf("Jump Identifier '%s' is undeclared.\n", identifier);
 			vm_push_cmd_jump(vm, 0);
-			if (!map_array_push(labels, identifier, strlen(identifier), &vm->commands->length))
-				printf("label push failed.\n");
-		}
 
-	}
-	{
-		// if it is interactive mode, execute after each line.
-		if (interactive_mode) {
-			vm_run(vm);
+			Addr jump_addr = vm->commands->length - 1;
+			if (map_array_push(labels, identifier, strlen(identifier), &jump_addr) < 0) {
+				printf("label push failed.\n");
+				exit_program(0);
+			}
 		}
 	}
 	| sentences block
@@ -317,8 +320,6 @@ sentences
 
 block
 	: start_block sentences end_block
-	{
-	}
 	;
 
 start_block
@@ -408,7 +409,7 @@ label
 			exit_program(0);
 		}
 
-		if (map_array_contains(labels, identifier, strlen(identifier))) {
+		if (map_array_contains_array(labels, identifier, strlen(identifier))) {
 			Array *array = NULL;
 			map_array_get_array(labels, identifier, strlen(identifier), &array);
 
@@ -418,39 +419,11 @@ label
 
 				Command command;
 				array_get(vm->commands, index, &command);
-				command.addr = index;
+				command.addr = vm->commands->length;
 				array_set(vm->commands, index, &command);
 			}
 		}
-
-
-#if false
-		if (!map_get (
-			variables,
-			identifier, strlen(identifier),
-			&addr, &size
-		))
-		{
-			printf("Jump Identifier '%s' is undeclared. Creating it now.\n", identifier);
-			{
-				stack_track++;
-				array_push(identifiers, &identifier);
-
-				map_put (
-					variables,
-					identifier, strlen(identifier),
-					&stack_track, sizeof(stack_track)
-				);
-
-				Addr addr = vm_push_cmd_push(vm);
-				vm_push_cmd_set_uint(vm, stack_track, addr);
-			}
-		}
-		else {
-		}
-#endif
 		free(identifier);
-
 	}
 
 declaration

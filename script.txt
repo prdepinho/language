@@ -1,11 +1,20 @@
 COMMANDS
-goto foo
+
 
 a:int = 10
 b:int = 1
-b = b + 50
+
+c:int = 10
+PRINT c
+
+{
+  goto foo
+  b = b + 50
+  foo:
+  PRINT b
+}
+
 PRINT a
 PRINT b
 
-foo:
 # STACK

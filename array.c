@@ -9,6 +9,7 @@ static int array_extend(Array *array){
 	if (new_heap == NULL)
 		return 1;
 
+	memset(new_heap, 0, new_capacity * array->data_size);
 	memcpy(new_heap, old_heap, old_capacity * array->data_size);
 	free(old_heap);
 
@@ -52,7 +53,7 @@ void *array_get(Array *array, int index, void *out_element){
 	return memcpy(out_element, array->heap + real_index * array->data_size, array->data_size);
 }
 
-size_t array_push(Array *array, void *element){
+long array_push(Array *array, void *element){
 	if (array->capacity == array->length){
 		int rval = array_extend(array);
 		if (rval)
@@ -62,14 +63,14 @@ size_t array_push(Array *array, void *element){
 	return array->length - 1;
 }
 
-size_t array_peek(Array *array, void *out_element){
+long array_peek(Array *array, void *out_element){
 	if (array->length == 0)
 		return -1;
 	array_get(array, array->length -1, out_element);
 	return array->length - 1;
 }
 
-size_t array_pop(Array *array, void *out_element){
+long array_pop(Array *array, void *out_element){
 	if (array->length == 0)
 		return -1;
 	array_get(array, --array->length, out_element);
