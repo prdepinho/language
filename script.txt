@@ -1,20 +1,15 @@
-COMMANDS
+# COMMANDS
 
 
 a:int = 10
-b:int = 1
-
-c:int = 10
-PRINT c
 
 {
-  goto foo
-  b = b + 50
-  foo:
+  b:int = 1
+  c:int = 10
+
   PRINT b
+  PRINT c
 }
 
-PRINT a
-PRINT b
 
 # STACK

@@ -114,7 +114,6 @@ void exit_program(int status_code) {
 		map_array_delete(labels);
 
 	if (strings != NULL) {
-		printf("+ printing strings: (%lu) \n", strings->length);
 		for (int i = 0; i < strings->length; i++) {
 			char *str = NULL;
 			array_get(strings, i, &str);
@@ -312,6 +311,9 @@ sentences
 	{
 		// if label is already defined in variables, set jump to that label's value;
 		// else, set jump to 0, and push its commands index to labels.
+
+		// TODO: don't forget to pop stack variables when exiting scopes.
+		// Entering scopes should be a problem when skipping variable initializations.
 
 		char *identifier = $3;
 
