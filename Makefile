@@ -25,7 +25,7 @@ vm.o: vm.c vm.h
 	cc -c vm.c $(CFLAGS)
 
 test: test.c hash.o
-	cc test.c hash.o array.o map_array.o vm.o -o test $(CFLAGS)
+	cc test.c hash.o array.o map_array.o -o test $(CFLAGS)
 
 clean:
 	rm program test.tab.c test.tab.h lex.yy.c *.o

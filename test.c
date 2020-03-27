@@ -4,7 +4,6 @@
 #include "hash.h"
 #include "array.h"
 #include "map_array.h"
-#include "vm.h"
 
 int main(void){
 
@@ -168,6 +167,24 @@ int main(void){
 	}
 #endif
 
+#if true
+	{
+		Array *array = array_new(sizeof(char*), 0);
+
+		{
+			char *str = strdup("foobar");
+			array_push(array, &str);
+		}
+
+		{
+			char *str = NULL;
+			array_peek(array, &str);
+			printf("%s\n", str);
+		}
+	}
+#endif
+
+	// maps & arrays
 #if false
 	{
 		Map *map = map_new(2);
@@ -222,7 +239,9 @@ map_array_test_end:
 		
 	}
 #endif
-#if true
+
+	// array_map
+#if false
 	{
 		MapArray *map = map_array_new(2, sizeof(int), 0);
 		if (map == NULL)

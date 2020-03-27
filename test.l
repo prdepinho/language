@@ -6,6 +6,9 @@
 #include "vm.h"
 #include "types.h"
 #include "test.tab.h"
+
+extern Array *strings;
+
 %}
 
 %%
@@ -55,8 +58,8 @@ goto						{return GOTO;}
 [ \t]+						{/* ignore return WHITESPACE; */}
 #.+							{/* ignore return COMMENTS; */}
 \n							{return NEWLINE;}
-[a-zA-Z_][a-zA-Z0-9_]*		{ yylval.str = strdup(yytext); return IDENTIFIER; }
-\"(\\.|[^\\"])*\"			{ yylval.str = strdup(yytext); return STRING_LITERAL;}
+[a-zA-Z_][a-zA-Z0-9_]*		{ char *str = strdup(yytext); yylval.str = str; array_push(strings, &str); return IDENTIFIER; }
+\"(\\.|[^\\"])*\"			{ char *str = strdup(yytext); yylval.str = str; array_push(strings, &str); return STRING_LITERAL;}
 -							{return (int) yytext[0];}
 \.							{return (int) yytext[0];}
 \/							{return (int) yytext[0];}

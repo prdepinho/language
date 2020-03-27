@@ -21,11 +21,13 @@ Array *stack_scope;			// keeps track of machine stack positions for each scope l
 size_t stack_track;			// keep track in compile time of the size of the machine stack.
 
 // Variable handling
-Array *identifiers;			// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
+Array *identifier_stack;	// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
 Map *variables;				// maps variable names with their place in the machine stack. Labels are treated as variables.
 Array *identifiers_scope;	// keeps track of identifiers positions for each scope level.
 
 MapArray *labels;			// maps jump labels and the list of their positions in the commands.
+
+Array *strings;				// keeps track of all identifiers and string literals in the program. These are strings dynamically allocated at lex level, so we want to keep their pointers to be able to free them.
 
 // null pointer
 Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
@@ -49,11 +51,11 @@ void dump() {
 	printf(" }\n");
 
 	// print identifiers
-	printf("identifiers: %lu\n", identifiers->length);
-	for (int i = 0; i < identifiers->length; i++) {
+	printf("identifier_stack: %lu\n", identifier_stack->length);
+	for (int i = 0; i < identifier_stack->length; i++) {
 		
 		char *vname = NULL;
-		array_get(identifiers, i, &vname);
+		array_get(identifier_stack, i, &vname);
 
 		Addr addr;
 		size_t addr_size;
@@ -106,10 +108,21 @@ void exit_program(int status_code) {
 		array_delete(stack_scope);
 	if (identifiers_scope != NULL)
 		array_delete(identifiers_scope);
-	if (identifiers != NULL)
-		array_delete(identifiers);
+	if (identifier_stack != NULL)
+		array_delete(identifier_stack);
 	if (labels != NULL)
 		map_array_delete(labels);
+
+	if (strings != NULL) {
+		printf("+ printing strings: (%lu) \n", strings->length);
+		for (int i = 0; i < strings->length; i++) {
+			char *str = NULL;
+			array_get(strings, i, &str);
+			free(str);
+		}
+		array_delete(strings);
+	}
+
 	fclose(yyin);
 	printf("Good bye.\n");
 	exit(status_code);
@@ -175,9 +188,9 @@ int main(int argc, const char **argv) {
 			goto main_end;
 		}
 
-		identifiers = array_new(sizeof(char *), 0);
-		if (identifiers == NULL) {
-			printf("identifiers is null.\n");
+		identifier_stack = array_new(sizeof(char *), 0);
+		if (identifier_stack == NULL) {
+			printf("identifier_stack is null.\n");
 			rval = 1;
 			goto main_end;
 		}
@@ -185,6 +198,13 @@ int main(int argc, const char **argv) {
 		labels = map_array_new(2, sizeof(Addr), 0);
 		if (labels == NULL) {
 			printf("Labels is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
+		strings = array_new(sizeof(char *), 0);
+		if (strings == NULL) {
+			printf("Identifiers is null.\n");
 			rval = 1;
 			goto main_end;
 		}
@@ -303,7 +323,6 @@ sentences
 			&addr, &size
 		)) {
 			vm_push_cmd_jump(vm, addr);
-			free(identifier);
 		}
 		else {
 			vm_push_cmd_jump(vm, 0);
@@ -326,7 +345,7 @@ start_block
 	: '{'
 	{
 		size_t level = array_push(stack_scope, &stack_track);
-		array_push(identifiers_scope, &identifiers->length);
+		array_push(identifiers_scope, &identifier_stack->length);
 	}
 	;
 
@@ -344,12 +363,11 @@ end_block
 		position = 0;
 		array_pop(identifiers_scope, &position);
 
-		for (int i = identifiers->length; i > position; i--) {
+		for (int i = identifier_stack->length; i > position; i--) {
 			// remove variables from stack and from map (compile time)
 			char *vname = NULL;
-			array_pop(identifiers, &vname);
+			array_pop(identifier_stack, &vname);
 			map_remove(variables, vname, strlen(vname));
-			free(vname);
 		}
 	}
 	;
@@ -359,7 +377,6 @@ function_declaration
 	{
 		char *identifier = $1;
 		printf("function declaration\n");
-		free(identifier);
 	}
 	;
 
@@ -370,12 +387,10 @@ param_list_content
 	: param_list_content ',' IDENTIFIER ':' type
 	{
 		char *identifier = $3;
-		free(identifier);
 	}
 	| '(' IDENTIFIER ':' type
 	{
 		char *identifier = $2;
-		free(identifier);
 	}
 	| '('
 	; 
@@ -398,7 +413,7 @@ label
 			exit_program(0);
 		}
 
-		array_push(identifiers, &identifier);
+		array_push(identifier_stack, &identifier);
 
 		if (!map_put (
 			variables,
@@ -423,7 +438,6 @@ label
 				array_set(vm->commands, index, &command);
 			}
 		}
-		free(identifier);
 	}
 
 declaration
@@ -432,7 +446,7 @@ declaration
 		char *identifier = $1;
 		int type = $3;
 
-		array_push(identifiers, &identifier);
+		array_push(identifier_stack, &identifier);
 
 		vm_push_cmd_push(vm);
 
@@ -465,7 +479,7 @@ declaration
 		int type = $3;
 		Addr rregaddr = $5;
 
-		array_push(identifiers, &identifier);
+		array_push(identifier_stack, &identifier);
 
 		vm_push_cmd_push(vm);
 
@@ -516,8 +530,7 @@ assignment
 
 		vm_push_cmd_assign(vm, lregaddr, rregaddr);
 
-assignment_end:
-		free(identifier);
+assignment_end:;
 	}
 	;
 
@@ -545,7 +558,6 @@ expression
 	}
 	| STRING_LITERAL
 	{
-		free($1);
 	}
 	| boolean
 	{
@@ -566,7 +578,6 @@ expression
 			addr = null_addr;
 		}
 
-		free(identifier);
 		$$ = addr;
 	}
 	| '-' expression
