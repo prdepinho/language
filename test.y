@@ -16,18 +16,17 @@ extern FILE *yyin;
 VM *vm;
 bool interactive_mode;		// when input is from stdin and executing them at once.
 
-// Machine stack handling
-Array *stack_scope;			// keeps track of machine stack positions for each scope level.
+// Scope handling
 size_t stack_track;			// keep track in compile time of the size of the machine stack.
-
-// Variable handling
-Array *identifier_stack;	// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
-Map *variables;				// maps variable names with their place in the machine stack. Labels are treated as variables.
+Array *stack_scope;			// keeps track of machine stack positions for each scope level.
 Array *identifiers_scope;	// keeps track of identifiers positions for each scope level.
+Array *identifier_stack;	// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
 
+Map *variables;				// maps variable names with their place in the machine stack. Labels are treated as variables.
 MapArray *labels;			// maps jump labels and the list of their positions in the commands.
-
 Array *strings;				// keeps track of all identifiers and string literals in the program. These are strings dynamically allocated at lex level, so we want to keep their pointers to be able to free them.
+size_t line_count;			// keeps track of source code lines.
+bool compilation_success;
 
 // null pointer
 Addr null_addr;				// the null pointer is an int 0 at the bottom of the stack.
@@ -131,7 +130,22 @@ int yyparse();
 int yylex();
 
 void yyerror(const char *str) {
-	fprintf(stderr, "YYError: %s\n", str);
+	fprintf(stderr, "YYError: %s. Line %lu.\n", str, line_count);
+}
+
+#define PRINT_ERROR(...) {													\
+	fprintf(stderr, "Error (line %lu): ", line_count);						\
+	fprintf(stderr, __VA_ARGS__);											\
+	fprintf(stderr, "\n");													\
+	compilation_success = false;											\
+}
+
+#define CRITICAL_ERROR(...) {												\
+	fprintf(stderr, "Critical Error (line %lu): ", line_count);				\
+	fprintf(stderr, __VA_ARGS__);											\
+	fprintf(stderr, "\n");													\
+	fprintf(stderr, "Exiting program with status code -1.\n");				\
+	exit_program(-1);														\
 }
 
 // This function is called when finished reading from yyin. Execute code if it was a file.
@@ -158,6 +172,8 @@ int main(int argc, const char **argv) {
 		stack_track = 0;
 		variables = NULL;
 		vm = NULL;
+		line_count = 1;
+		compilation_success = true;
 
 		variables = map_new(2);
 		if (variables == NULL) {
@@ -250,8 +266,16 @@ program
 	: sentences
 	{
 		if (!interactive_mode) {
-			printf("Finished compiling, now running.\n");
-			vm_run(vm);
+			printf("Finished compiling.\n");
+			if (compilation_success) {
+				printf("Compilation successful.\n");
+				printf("Now running.\n");
+				vm_run(vm);
+			}
+			else {
+				printf("Compilation Failed. Exiting with status -1.\n");
+				exit_program(-1);
+			}
 		}
 	}
 	;
@@ -294,7 +318,7 @@ sentences
 	}
 	| sentences error end_sentence
 	{
-		printf("Error\n");
+		printf("Error at line %lu\n", line_count);
 	}
 	| sentences label end_sentence
 	| sentences end_sentence
@@ -331,8 +355,7 @@ sentences
 
 			Addr jump_addr = vm->commands->length - 1;
 			if (map_array_push(labels, identifier, strlen(identifier), &jump_addr) < 0) {
-				printf("label push failed.\n");
-				exit_program(0);
+				CRITICAL_ERROR("label push failed.");
 			}
 		}
 	}
@@ -411,8 +434,7 @@ label
 			identifier, strlen(identifier),
 			&addr, &size
 		)) {
-			printf("Identifier %s already declared.\n", identifier);
-			exit_program(0);
+			PRINT_ERROR("Identifier %s already declared.", identifier);
 		}
 
 		array_push(identifier_stack, &identifier);
@@ -422,8 +444,7 @@ label
 			identifier, strlen(identifier),
 			&vm->commands->length, sizeof(vm->commands->length)
 		)){
-			printf("Could not push identifier %s to variables\n", identifier);
-			exit_program(0);
+			CRITICAL_ERROR("Could not push identifier %s to variables.", identifier);
 		}
 
 		if (map_array_contains_array(labels, identifier, strlen(identifier))) {
@@ -526,7 +547,7 @@ assignment
 			&lregaddr, &size
 		))
 		{
-			printf("Identifier '%s' undeclared.\n", identifier);
+			PRINT_ERROR("Identifier '%s' undeclared.", identifier);
 			goto assignment_end;
 		}
 
@@ -576,7 +597,7 @@ expression
 			&addr, &size
 		))
 		{
-			printf("Identifier '%s' undeclared.\n", identifier);
+			PRINT_ERROR("Identifier '%s' undeclared.", identifier);
 			addr = null_addr;
 		}
 
@@ -653,7 +674,7 @@ command
 			&addr, &size
 		))
 		{
-			printf("Identifier '%s' undeclared.\n", identifier);
+			PRINT_ERROR("Identifier '%s' undeclared.", identifier);
 		}
 		else {
 			vm_push_cmd_print(vm, addr);
@@ -776,5 +797,8 @@ boolean
 
 end_sentence
 	: NEWLINE
+	{
+		line_count++;
+	}
 	| ';'
 	;
