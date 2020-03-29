@@ -55,6 +55,11 @@ COMMANDS					{return COMMANDS;}
 true						{return TRUE;}
 false						{return FALSE;}
 goto						{return GOTO;}
+and							{return AND;}
+or							{return OR;}
+not							{return NOT;}
+if							{return IF;}
+while						{return WHILE;}
 [ \t]+						{/* ignore return WHITESPACE; */}
 #.+							{/* ignore return COMMENTS; */}
 \n							{return NEWLINE;}

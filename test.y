@@ -255,7 +255,7 @@ main_end:
 %type <int_value> vm_command_int_param
 %type <float_value> vm_command_float_param
 
-%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT DUMP GOTO
+%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT DUMP GOTO NOT AND OR IF WHILE
 %left '+' '-'
 %left '*' '/' '%'
 %left '^'
@@ -359,8 +359,40 @@ sentences
 			}
 		}
 	}
+	| sentences if_block
+	| sentences while_block
 	| sentences block
 	;
+
+
+if_block
+	: if_statement block
+	{
+		printf("if block (end)\n");
+	}
+	;
+
+if_statement
+	: IF expression
+	{
+		printf("if statement (start)\n");
+	}
+	;
+
+
+while_block
+	: while_statement block
+	{
+	}
+	;
+
+while_statement
+	: WHILE expression
+	{
+
+	}
+	;
+
 
 block
 	: start_block sentences end_block
@@ -369,6 +401,7 @@ block
 start_block
 	: '{'
 	{
+		printf("start block\n");
 		size_t level = array_push(stack_scope, &stack_track);
 		array_push(identifiers_scope, &identifier_stack->length);
 	}
@@ -434,7 +467,7 @@ label
 			identifier, strlen(identifier),
 			&addr, &size
 		)) {
-			PRINT_ERROR("Identifier %s already declared.", identifier);
+			PRINT_ERROR("Identifier '%s' already declared.", identifier);
 		}
 
 		array_push(identifier_stack, &identifier);
@@ -469,31 +502,42 @@ declaration
 		char *identifier = $1;
 		int type = $3;
 
-		array_push(identifier_stack, &identifier);
-
-		vm_push_cmd_push(vm);
-
-		stack_track++;
-
-		map_put (
+		Addr addr = 0;
+		size_t size = 0;
+		if (map_get(
 			variables,
 			identifier, strlen(identifier),
-			&stack_track, sizeof(stack_track)
-		);
+			&addr, &size
+		)) {
+			PRINT_ERROR("Identifier '%s' already declared.", identifier);
+		}
+		else {
+			array_push(identifier_stack, &identifier);
 
-		switch (type) {
-		case TYPE_BYTE:
-			vm_push_cmd_set_byte(vm, stack_track, 0);
-			break;
-		case TYPE_UINT:
-			vm_push_cmd_set_uint(vm, stack_track, 0);
-			break;
-		case TYPE_INT:
-			vm_push_cmd_set_int(vm, stack_track, 0);
-			break;
-		case TYPE_FLOAT:
-			vm_push_cmd_set_float(vm, stack_track, 0.0);
-			break;
+			vm_push_cmd_push(vm);
+
+			stack_track++;
+
+			map_put (
+				variables,
+				identifier, strlen(identifier),
+				&stack_track, sizeof(stack_track)
+			);
+
+			switch (type) {
+			case TYPE_BYTE:
+				vm_push_cmd_set_byte(vm, stack_track, 0);
+				break;
+			case TYPE_UINT:
+				vm_push_cmd_set_uint(vm, stack_track, 0);
+				break;
+			case TYPE_INT:
+				vm_push_cmd_set_int(vm, stack_track, 0);
+				break;
+			case TYPE_FLOAT:
+				vm_push_cmd_set_float(vm, stack_track, 0.0);
+				break;
+			}
 		}
 	}
 	| IDENTIFIER ':' type '=' expression
@@ -502,33 +546,44 @@ declaration
 		int type = $3;
 		Addr rregaddr = $5;
 
-		array_push(identifier_stack, &identifier);
-
-		vm_push_cmd_push(vm);
-
-		stack_track++;
-		map_put (
+		Addr addr = 0;
+		size_t size = 0;
+		if (map_get(
 			variables,
 			identifier, strlen(identifier),
-			&stack_track, sizeof(stack_track)
-		);
-
-		switch (type) {
-		case TYPE_BYTE:
-			vm_push_cmd_set_byte(vm, stack_track, 0);
-			break;
-		case TYPE_UINT:
-			vm_push_cmd_set_uint(vm, stack_track, 0);
-			break;
-		case TYPE_INT:
-			vm_push_cmd_set_int(vm, stack_track, 0);
-			break;
-		case TYPE_FLOAT:
-			vm_push_cmd_set_float(vm, stack_track, 0.0);
-			break;
+			&addr, &size
+		)) {
+			PRINT_ERROR("Identifier '%s' already declared.", identifier);
 		}
+		else {
+			array_push(identifier_stack, &identifier);
 
-		vm_push_cmd_assign(vm, stack_track, rregaddr);
+			vm_push_cmd_push(vm);
+
+			stack_track++;
+			map_put (
+				variables,
+				identifier, strlen(identifier),
+				&stack_track, sizeof(stack_track)
+			);
+
+			switch (type) {
+			case TYPE_BYTE:
+				vm_push_cmd_set_byte(vm, stack_track, 0);
+				break;
+			case TYPE_UINT:
+				vm_push_cmd_set_uint(vm, stack_track, 0);
+				break;
+			case TYPE_INT:
+				vm_push_cmd_set_int(vm, stack_track, 0);
+				break;
+			case TYPE_FLOAT:
+				vm_push_cmd_set_float(vm, stack_track, 0.0);
+				break;
+			}
+
+			vm_push_cmd_assign(vm, stack_track, rregaddr);
+		}
 	}
 	;
 
@@ -548,12 +603,10 @@ assignment
 		))
 		{
 			PRINT_ERROR("Identifier '%s' undeclared.", identifier);
-			goto assignment_end;
 		}
-
-		vm_push_cmd_assign(vm, lregaddr, rregaddr);
-
-assignment_end:;
+		else {
+			vm_push_cmd_assign(vm, lregaddr, rregaddr);
+		}
 	}
 	;
 
@@ -584,6 +637,7 @@ expression
 	}
 	| boolean
 	{
+		$$ = $1;
 	}
 	| IDENTIFIER
 	{
@@ -653,10 +707,89 @@ expression
 	}
 	| expression '%' expression
 	{
+		// rest
+	}
+	| expression '&' expression
+	{
+		// bitwise and
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_and(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
+	}
+	| expression '|' expression
+	{
+		// bitwise or
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_or(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
+	}
+	| '!' expression
+	{
+		// bitwise not
+		Addr rvaladdr = $2;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_not(vm, rvaladdr, stack_track);
+		$$ = stack_track;
 	}
 	| expression '^' expression
 	{
+		// bitwise xor
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_xor(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
 	}
+	| expression AND expression
+	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_and(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
+	}
+	| expression OR expression
+	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_or(vm, lvaladdr, rvaladdr, stack_track);
+		$$ = stack_track;
+	}
+	| NOT expression
+	{
+		Addr rvaladdr = $2;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_not(vm, rvaladdr, stack_track);
+		$$ = stack_track;
+	}
+	| expression '<' expression
+	{
+		// a < b => a - b is negative
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_sub(vm, lvaladdr, rvaladdr, stack_track);
+
+		$$ = stack_track;
+	}
+	| expression '>' expression
+	| expression '=' '=' expression
+	| expression '!' '=' expression
+	| expression '<' '=' expression
+	| expression '>' '=' expression
 	;
 
 command

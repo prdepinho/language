@@ -27,13 +27,22 @@ enum CommandCode {
 	CMD_OR = 14,		// Set to raddr the bitwise OR operator between addr and addr_arg.
 	CMD_XOR = 15,		// Set to raddr the bitwise XOR operator between addr and addr_arg.
 	CMD_NOT = 16,		// Set to raddr the bitwise NOT operator of addr.
-	CMD_PUSH = 17,		// Push an undefined value in the stack.
-	CMD_POP = 18,		// Pop a value from the stack.
-	CMD_STACK = 19,		// Dump the stack.
-	CMD_COMMANDS = 20,	// Dump the command list.
-	CMD_PRINT = 21,		// Dump the value of addr.
-	CMD_COPY = 22,		// Copy to addr the value of addr_arg.
-	CMD_ASSIGN = 23,	// Assign to addr the value of addr_arg, converting types.
+
+	CMD_LSHIFT = 17,	// Set to raddr the bitwise right shift of addr by addr_arg bytes.
+	CMD_RSHIFT = 18,	// Set to raddr the bitsise left shift of addr by addr_arg bytes.
+	CMD_GREATER = 19,	// Set to raddr the value of addr > addr_arg.
+	CMD_LESS = 20,		// Set to raddr the value of addr < addr_arg.
+	CMD_EQUAL = 21,		// Set to raddr the value of addr == addr_arg.
+	CMD_GEQ = 22,		// Set to raddr the value of addr >= addr_arg.
+	CMD_LEQ = 23,		// Set to raddr the value of addr <= addr_arg.
+
+	CMD_PUSH = 24,		// Push an undefined value in the stack.
+	CMD_POP = 25,		// Pop a value from the stack.
+	CMD_STACK = 26,		// Dump the stack.
+	CMD_COMMANDS = 27,	// Dump the command list.
+	CMD_PRINT = 28,		// Dump the value of addr.
+	CMD_COPY = 29,		// Copy to addr the value of addr_arg.
+	CMD_ASSIGN = 30,	// Assign to addr the value of addr_arg, converting types.
 };
 // and, or, xor, not, compare
 
@@ -133,6 +142,14 @@ Addr vm_push_cmd_or(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 Addr vm_push_cmd_xor(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 Addr vm_push_cmd_not(VM *vm, Addr addr, Addr raddr);
 
+Addr vm_push_cmd_rshift(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_lshift(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_greater(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_less(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_equal(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_geq(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_leq(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+
 Addr vm_push_cmd_stack(VM *vm);
 Addr vm_push_cmd_commands(VM *vm);
 Addr vm_push_cmd_print(VM *vm, Addr addr);
@@ -170,6 +187,14 @@ Addr vm_and(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_or(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_xor(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_not(VM *vm, Addr lval_addr, Addr raddr);
+
+Addr vm_rshift(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+Addr vm_lshift(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+Addr vm_greater(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+Addr vm_less(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+Addr vm_equal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+Addr vm_geq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+Addr vm_leq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 
 Register vm_pop(VM *vm);
 Register vm_get(VM *vm, Addr index);	// get a register in absolute address.

@@ -3,14 +3,12 @@
 
 a:int = 10
 
-{
+if a {
   b:int = 1
   c:int = 10
 
-foo:
   PRINT b
   PRINT c
 }
-
 
 # STACK

@@ -129,6 +129,27 @@ Addr vm_execute(VM *vm, Command cmd) {
 
 	case CMD_NOT:
 		return vm_not(vm, cmd.addr, cmd.raddr);
+	
+	case CMD_RSHIFT:
+		return vm_lshift(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
+	
+	case CMD_LSHIFT:
+		return vm_lshift(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
+	
+	case CMD_GREATER:
+		return vm_greater(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
+	
+	case CMD_LESS:
+		return vm_less(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
+
+	case CMD_EQUAL:
+		return vm_equal(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
+	
+	case CMD_GEQ:
+		return vm_geq(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
+	
+	case CMD_LEQ:
+		return vm_leq(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
 
 	case CMD_PUSH:
 		vm_push(vm);
@@ -300,6 +321,69 @@ Addr vm_push_cmd_not(VM *vm, Addr addr, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_NOT;
 	cmd.addr = addr;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_rshift(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_RSHIFT;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_lshift(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_LSHIFT;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_greater(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_GREATER;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_less(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_LESS;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_equal(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_EQUAL;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_geq(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_GEQ;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_leq(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_LEQ;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
 	cmd.raddr = raddr;
 	return array_push(vm->commands, &cmd);
 }
@@ -1141,6 +1225,664 @@ Addr vm_not(VM *vm, Addr lval_addr, Addr raddr) {
 		case TYPE_FLOAT:
 			result.type = TYPE_UINT;
 			result.uint_value = !((UInt) lval.float_value);
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
+Addr vm_rshift(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value << rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) << rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) << rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value << ((Byte) rval.float_value);
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value << ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value << rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) << rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value << (UInt) rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value << ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value << ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value << rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value << (Int) rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = ((Byte) lval.float_value) << rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.float_value = ((UInt) lval.float_value) << rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.float_value = ((Int) lval.float_value) << rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.float_value) << ((UInt) rval.float_value);
+					break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
+Addr vm_lshift(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value >> rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) >> rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) >> rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value >> ((Byte) rval.float_value);
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value >> ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value >> rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) >> rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value >> (UInt) rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value >> ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value >> ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value >> rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value >> (Int) rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = ((Byte) lval.float_value) >> rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.float_value = ((UInt) lval.float_value) >> rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.float_value = ((Int) lval.float_value) >> rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.float_value) >> ((UInt) rval.float_value);
+					break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
+Addr vm_greater(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value > rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) > rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) > rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.byte_value) > rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value > ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value > rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) > rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.uint_value) > rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value > ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value > ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value > rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.int_value) > rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value > ((Float) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value > ((Float) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value > ((Float) rval.int_value);
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value > rval.float_value;
+					break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
+Addr vm_less(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value < rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) < rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) < rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.byte_value) < rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value < ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value < rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) < rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.uint_value) < rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value < ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value < ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value < rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.int_value) < rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value < ((Float) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value < ((Float) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value < ((Float) rval.int_value);
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value < rval.float_value;
+					break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
+Addr vm_equal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value == rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) == rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) == rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.byte_value) == rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value == ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value == rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) == rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.uint_value) == rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value == ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value == ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value == rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.int_value) == rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value == ((Float) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value == ((Float) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value == ((Float) rval.int_value);
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value == rval.float_value;
+					break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
+Addr vm_geq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value >= rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) >= rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) >= rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.byte_value) >= rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value >= ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value >= rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) >= rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.uint_value) >= rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value >= ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value >= ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value >= rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.int_value) >= rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value >= ((Float) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value >= ((Float) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value >= ((Float) rval.int_value);
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value >= rval.float_value;
+					break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
+Addr vm_leq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value <= rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) <= rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) <= rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.byte_value) <= rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value <= ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value <= rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) <= rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.uint_value) <= rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value <= ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value <= ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value <= rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.int_value) <= rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value <= ((Float) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value <= ((Float) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value <= ((Float) rval.int_value);
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value <= rval.float_value;
+					break;
+			}
 			break;
 	}
 
