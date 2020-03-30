@@ -15,34 +15,40 @@ enum CommandCode {
 	CMD_SET_INT = 2,	// Set int_arg to addr.
 	CMD_SET_UINT = 3,	// Set uint_arg to addr.
 	CMD_SET_FLOAT = 4,	// Set float_arg to addr.
+
 	CMD_MALLOC = 5,		// Malloc.
 	CMD_FREE = 6,		// Free.
+
 	CMD_ADD = 7,		// Set to raddr the sum of values in addr and addr_arg.
 	CMD_SUB = 8,		// Set to raddr the difference of values in addr and addr_arg.	
 	CMD_MULT = 9,		// Set to raddr the product of values in addr and addr_arg.
 	CMD_DIV = 10,		// Set to raddr the quotient of values in addr and addr_arg.
+
 	CMD_JUMP = 11,		// Set the cmd_ptr of the virtual machine to addr.
 	CMD_JCOND = 12,		// Like jump, but only if the value of addr_arg is true.
+
 	CMD_AND = 13,		// Set to raddr the bitwise AND operator between addr and addr_arg.
 	CMD_OR = 14,		// Set to raddr the bitwise OR operator between addr and addr_arg.
 	CMD_XOR = 15,		// Set to raddr the bitwise XOR operator between addr and addr_arg.
 	CMD_NOT = 16,		// Set to raddr the bitwise NOT operator of addr.
-
 	CMD_LSHIFT = 17,	// Set to raddr the bitwise right shift of addr by addr_arg bytes.
 	CMD_RSHIFT = 18,	// Set to raddr the bitsise left shift of addr by addr_arg bytes.
+
 	CMD_GREATER = 19,	// Set to raddr the value of addr > addr_arg.
 	CMD_LESS = 20,		// Set to raddr the value of addr < addr_arg.
 	CMD_EQUAL = 21,		// Set to raddr the value of addr == addr_arg.
-	CMD_GEQ = 22,		// Set to raddr the value of addr >= addr_arg.
-	CMD_LEQ = 23,		// Set to raddr the value of addr <= addr_arg.
+	CMD_NEQUAL = 22,	// Set to raddr the value of addr == addr_arg.
+	CMD_GEQ = 23,		// Set to raddr the value of addr >= addr_arg.
+	CMD_LEQ = 24,		// Set to raddr the value of addr <= addr_arg.
 
-	CMD_PUSH = 24,		// Push an undefined value in the stack.
-	CMD_POP = 25,		// Pop a value from the stack.
-	CMD_STACK = 26,		// Dump the stack.
-	CMD_COMMANDS = 27,	// Dump the command list.
-	CMD_PRINT = 28,		// Dump the value of addr.
-	CMD_COPY = 29,		// Copy to addr the value of addr_arg.
-	CMD_ASSIGN = 30,	// Assign to addr the value of addr_arg, converting types.
+	CMD_PUSH = 25,		// Push an undefined value in the stack.
+	CMD_POP = 26,		// Pop a value from the stack.
+	CMD_STACK = 27,		// Dump the stack.
+	CMD_COMMANDS = 28,	// Dump the command list.
+	CMD_PRINT = 29,		// Dump the value of addr.
+	CMD_COPY = 30,		// Copy to addr the value of addr_arg.
+	CMD_ASSIGN = 31,	// Assign to addr the value of addr_arg, converting types.
+	CMD_EXIT = 32,		// Exit the program.
 };
 // and, or, xor, not, compare
 
@@ -147,12 +153,14 @@ Addr vm_push_cmd_lshift(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 Addr vm_push_cmd_greater(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 Addr vm_push_cmd_less(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 Addr vm_push_cmd_equal(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
+Addr vm_push_cmd_nequal(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 Addr vm_push_cmd_geq(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 Addr vm_push_cmd_leq(VM *vm, Addr addr, Addr addr_arg, Addr raddr);
 
 Addr vm_push_cmd_stack(VM *vm);
 Addr vm_push_cmd_commands(VM *vm);
 Addr vm_push_cmd_print(VM *vm, Addr addr);
+Addr vm_push_cmd_exit(VM *vm);
 
 
 // Private functions:
@@ -193,6 +201,7 @@ Addr vm_lshift(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_greater(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_less(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_equal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+Addr vm_nequal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_geq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_leq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 

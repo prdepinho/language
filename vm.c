@@ -144,10 +144,13 @@ Addr vm_execute(VM *vm, Command cmd) {
 
 	case CMD_EQUAL:
 		return vm_equal(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
-	
+
+	case CMD_NEQUAL:
+		return vm_nequal(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
+
 	case CMD_GEQ:
 		return vm_geq(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
-	
+
 	case CMD_LEQ:
 		return vm_leq(vm, cmd.addr, cmd.addr_arg, cmd.raddr);
 
@@ -169,6 +172,10 @@ Addr vm_execute(VM *vm, Command cmd) {
 	
 	case CMD_PRINT:
 		vm_register_dump(vm, cmd.addr);
+		break;
+	
+	case CMD_EXIT:
+		vm->cmd_ptr = vm->commands->length;
 		break;
 
 	}
@@ -370,6 +377,15 @@ Addr vm_push_cmd_equal(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	return array_push(vm->commands, &cmd);
 }
 
+Addr vm_push_cmd_nequal(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
+	Command cmd;
+	cmd.code = CMD_NEQUAL;
+	cmd.addr = addr;
+	cmd.addr_arg = addr_arg;
+	cmd.raddr = raddr;
+	return array_push(vm->commands, &cmd);
+}
+
 Addr vm_push_cmd_geq(VM *vm, Addr addr, Addr addr_arg, Addr raddr) {
 	Command cmd;
 	cmd.code = CMD_GEQ;
@@ -404,6 +420,12 @@ Addr vm_push_cmd_print(VM *vm, Addr addr) {
 	Command cmd;
 	cmd.code = CMD_PRINT;
 	cmd.addr = addr;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_exit(VM *vm) {
+	Command cmd;
+	cmd.code = CMD_EXIT;
 	return array_push(vm->commands, &cmd);
 }
 
@@ -1209,7 +1231,7 @@ Addr vm_not(VM *vm, Addr lval_addr, Addr raddr) {
 	Register result;
 	array_get(vm->stack, lval_addr, &lval);
 
-	switch (result.type) {
+	switch (lval.type) {
 		case TYPE_BYTE:
 			result.type = TYPE_BYTE;
 			result.byte_value = !lval.byte_value;
@@ -1702,6 +1724,100 @@ Addr vm_equal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
 	return raddr;
 }
 
+Addr vm_nequal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
+	Register lval;
+	Register rval;
+	Register result;
+	array_get(vm->stack, lval_addr, &lval);
+	array_get(vm->stack, rval_addr, &rval);
+
+	switch (lval.type) {
+		case TYPE_BYTE:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_BYTE;
+					result.byte_value = lval.byte_value != rval.byte_value;
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = ((UInt) lval.byte_value) != rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.byte_value) != rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.byte_value) != rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_UINT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value != ((Byte) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_UINT;
+					result.uint_value = lval.uint_value != rval.uint_value;
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = ((Int) lval.uint_value) != rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.uint_value) != rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_INT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value != ((Int) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value != ((Int) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_INT;
+					result.int_value = lval.int_value != rval.int_value;
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = ((Float) lval.int_value) != rval.float_value;
+					break;
+			}
+			break;
+		case TYPE_FLOAT:
+			switch (rval.type) {
+				case TYPE_BYTE:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value != ((Float) rval.byte_value);
+					break;
+				case TYPE_UINT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value != ((Float) rval.uint_value);
+					break;
+				case TYPE_INT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value != ((Float) rval.int_value);
+					break;
+				case TYPE_FLOAT:
+					result.type = TYPE_FLOAT;
+					result.float_value = lval.float_value != rval.float_value;
+					break;
+			}
+			break;
+	}
+
+	array_set(vm->stack, raddr, &result);
+	return raddr;
+}
+
 Addr vm_geq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
 	Register lval;
 	Register rval;
@@ -2032,6 +2148,54 @@ void vm_commands_dump(VM *vm) {
 			printf(" %10s", "-");
 			printf(" %10ld", cmd.raddr);
 			break;
+		case CMD_GREATER:
+			printf("%-10s", "greater");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
+		case CMD_LESS:
+			printf("%-10s", "less");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
+		case CMD_EQUAL:
+			printf("%-10s", "equal");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
+		case CMD_NEQUAL:
+			printf("%-10s", "nequal");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
+		case CMD_GEQ:
+			printf("%-10s", "geq");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
+		case CMD_LEQ:
+			printf("%-10s", "leq");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
+		case CMD_RSHIFT:
+			printf("%-10s", "rshift");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
+		case CMD_LSHIFT:
+			printf("%-10s", "lshift");
+			printf(" %10ld", cmd.addr);
+			printf(" %10ld", cmd.addr_arg);
+			printf(" %10ld", cmd.raddr);
+			break;
 		case CMD_JUMP:
 			printf("%-10s", "jump");
 			printf(" %10ld", cmd.addr);
@@ -2058,6 +2222,12 @@ void vm_commands_dump(VM *vm) {
 			break;
 		case CMD_STACK:
 			printf("%-10s", "stack");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
+			printf(" %10s", "-");
+			break;
+		case CMD_EXIT:
+			printf("%-10s", "exit");
 			printf(" %10s", "-");
 			printf(" %10s", "-");
 			printf(" %10s", "-");

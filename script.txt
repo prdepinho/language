@@ -1,14 +1,14 @@
-# COMMANDS
-
+COMMANDS
 
 a:int = 10
 
 if a {
-  b:int = 1
-  c:int = 10
+  PRINT a
 
+  b:int = 20
   PRINT b
-  PRINT c
 }
+
+b:int
 
 # STACK

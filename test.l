@@ -34,6 +34,7 @@ VM_NOT						{return VM_NOT;}
 VM_JUMP						{return VM_JUMP;}
 VM_JCOND					{return VM_JCOND;}
 VM_POP						{return VM_POP;}
+VM_EXIT						{return VM_EXIT;}
 
 _							{return UNDERLINE;}
 quit						{return QUIT;}
@@ -71,6 +72,10 @@ while						{return WHILE;}
 ((([0-9]*\.)+[0-9]+))		{ yylval.float_value = atof(yytext); return FLOAT_LITERAL; }
 (0x[0-9a-f]+)				{ yylval.int_value = strtol(yytext, NULL, 0); return HEX_LITERAL; }
 ([0-9]+)					{ yylval.int_value = atol(yytext); return INT_LITERAL; }
+==							{return EQUAL;}
+!=							{return NEQUAL;}
+\<=							{return LEQ;}
+\>=							{return GEQ;}
 `							{return (int) yytext[0];}
 ~							{return (int) yytext[0];}
 !							{return (int) yytext[0];}

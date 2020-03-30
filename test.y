@@ -22,6 +22,9 @@ Array *stack_scope;			// keeps track of machine stack positions for each scope l
 Array *identifiers_scope;	// keeps track of identifiers positions for each scope level.
 Array *identifier_stack;	// keeps track of identifiers, that is, variable, labels, function names. All identifiers are in the machine stack.
 
+// Structured control flow handing
+Array *control_stack;		// keeps track of the command address where control flow structures begin.
+
 Map *variables;				// maps variable names with their place in the machine stack. Labels are treated as variables.
 MapArray *labels;			// maps jump labels and the list of their positions in the commands.
 Array *strings;				// keeps track of all identifiers and string literals in the program. These are strings dynamically allocated at lex level, so we want to keep their pointers to be able to free them.
@@ -111,6 +114,8 @@ void exit_program(int status_code) {
 		array_delete(identifier_stack);
 	if (labels != NULL)
 		map_array_delete(labels);
+	if (control_stack != NULL)
+		array_delete(control_stack);
 
 	if (strings != NULL) {
 		for (int i = 0; i < strings->length; i++) {
@@ -224,6 +229,13 @@ int main(int argc, const char **argv) {
 			goto main_end;
 		}
 
+		control_stack = array_new(sizeof(Addr), 0);
+		if (control_stack == NULL) {
+			printf("Control stack is null.\n");
+			rval = 1;
+			goto main_end;
+		}
+
 		null_addr = vm_push_int(vm, 0);
 	}
 
@@ -255,10 +267,13 @@ main_end:
 %type <int_value> vm_command_int_param
 %type <float_value> vm_command_float_param
 
-%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT DUMP GOTO NOT AND OR IF WHILE
+%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT VM_EXIT DUMP GOTO NOT AND OR IF WHILE EQUAL NEQUAL GEQ LEQ
 %left '+' '-'
 %left '*' '/' '%'
-%left '^'
+%left '!' NOT
+%left '&' AND 
+%left OR XOR '|' '^'
+%left EQUAL NEQUAL LEQ GEQ '<' '>'
 
 %%
 
@@ -313,6 +328,8 @@ sentences
 			case TYPE_FLOAT:
 				printf("%f\n", reg.float_value);
 				break;
+			default:
+				printf("no type\n");
 			}
 		}
 	}
@@ -369,6 +386,17 @@ if_block
 	: if_statement block
 	{
 		printf("if block (end)\n");
+		// lookup the address of the conditional jump and set it to jump here.
+		Addr index = 0;
+		printf(" + control_stack length: %lu\n", control_stack->length);
+		array_pop(control_stack, &index);
+		printf(" + index: %lu\n", index);
+
+		Command command;
+		array_get(vm->commands, index, &command);
+		printf(" + command got: %d\n", command.code);
+		command.addr = vm->commands->length;
+		array_set(vm->commands, index, &command);
 	}
 	;
 
@@ -376,6 +404,19 @@ if_statement
 	: IF expression
 	{
 		printf("if statement (start)\n");
+		// set a jump conditional to 0.
+		// at the end of the if block, retroactively set that 0 as the actual command address.
+		Addr bool_addr = $2;
+		
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_not(vm, bool_addr, stack_track);
+
+		Addr if_addr = vm->commands->length;
+		if (array_push(control_stack, &if_addr) < 0) {
+			CRITICAL_ERROR("If control_stack push failed.");
+		}
+		vm_push_cmd_jcond(vm, 0, stack_track);
 	}
 	;
 
@@ -776,26 +817,68 @@ expression
 	}
 	| expression '<' expression
 	{
-		// a < b => a - b is negative
 		Addr lvaladdr = $1;
 		Addr rvaladdr = $3;
 		stack_track++;
 		vm_push_cmd_push(vm);
-		vm_push_cmd_sub(vm, lvaladdr, rvaladdr, stack_track);
+		vm_push_cmd_less(vm, lvaladdr, rvaladdr, stack_track);
 
 		$$ = stack_track;
 	}
 	| expression '>' expression
-	| expression '=' '=' expression
-	| expression '!' '=' expression
-	| expression '<' '=' expression
-	| expression '>' '=' expression
+	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_greater(vm, lvaladdr, rvaladdr, stack_track);
+
+		$$ = stack_track;
+	}
+	| expression EQUAL expression
+	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_equal(vm, lvaladdr, rvaladdr, stack_track);
+
+		$$ = stack_track;
+	}
+	| expression NEQUAL expression
+	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_nequal(vm, lvaladdr, rvaladdr, stack_track);
+
+		$$ = stack_track;
+	}
+	| expression LEQ expression
+	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_leq(vm, lvaladdr, rvaladdr, stack_track);
+
+		$$ = stack_track;
+	}
+	| expression GEQ expression
+	{
+		Addr lvaladdr = $1;
+		Addr rvaladdr = $3;
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_geq(vm, lvaladdr, rvaladdr, stack_track);
+
+		$$ = stack_track;
+	}
 	;
 
 command
-	: QUIT { exit_program(0); }
-	| EXIT { exit_program(0); }
-	| PRINT IDENTIFIER
+	: PRINT IDENTIFIER
 	{
 		char *identifier = $2;
 		Addr addr;
@@ -895,6 +978,24 @@ vm_command
 	| VM_POP
 	{
 		vm_push_cmd_pop(vm);
+	}
+	| VM_EXIT
+	{
+		vm_push_cmd_exit(vm);
+	}
+	| EXIT
+	{
+		if (interactive_mode)
+			exit_program(0);
+		else
+			vm_push_cmd_exit(vm);
+	}
+	| QUIT
+	{
+		if (interactive_mode)
+			exit_program(0);
+		else
+			vm_push_cmd_exit(vm);
 	}
 	;
 
