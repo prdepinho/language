@@ -385,25 +385,23 @@ sentences
 if_block
 	: if_statement block
 	{
-		printf("if block (end)\n");
 		// lookup the address of the conditional jump and set it to jump here.
 		Addr index = 0;
-		printf(" + control_stack length: %lu\n", control_stack->length);
 		array_pop(control_stack, &index);
-		printf(" + index: %lu\n", index);
 
 		Command command;
 		array_get(vm->commands, index, &command);
-		printf(" + command got: %d\n", command.code);
 		command.addr = vm->commands->length;
 		array_set(vm->commands, index, &command);
+
+		vm_push_cmd_pop(vm);
+		stack_track--;
 	}
 	;
 
 if_statement
 	: IF expression
 	{
-		printf("if statement (start)\n");
 		// set a jump conditional to 0.
 		// at the end of the if block, retroactively set that 0 as the actual command address.
 		Addr bool_addr = $2;
@@ -420,17 +418,38 @@ if_statement
 	}
 	;
 
-
 while_block
 	: while_statement block
 	{
+		Addr index = 0;
+		array_pop(control_stack, &index);
+
+		Command command;
+		array_get(vm->commands, index, &command);
+		command.addr = vm->commands->length + 2;
+		array_set(vm->commands, index, &command);
+
+		vm_push_cmd_pop(vm);
+		vm_push_cmd_jump(vm, index - 3);
+		vm_push_cmd_pop(vm);
+		stack_track--; // only one, because one pop when looping, one pop when done
 	}
 	;
 
 while_statement
 	: WHILE expression
 	{
+		Addr bool_addr = $2;
+		
+		stack_track++;
+		vm_push_cmd_push(vm);
+		vm_push_cmd_not(vm, bool_addr, stack_track);
 
+		Addr while_addr = vm->commands->length;
+		if (array_push(control_stack, &while_addr) < 0) {
+			CRITICAL_ERROR("While control_stack push failed.");
+		}
+		vm_push_cmd_jcond(vm, 0, stack_track);
 	}
 	;
 
@@ -442,7 +461,6 @@ block
 start_block
 	: '{'
 	{
-		printf("start block\n");
 		size_t level = array_push(stack_scope, &stack_track);
 		array_push(identifiers_scope, &identifier_stack->length);
 	}
