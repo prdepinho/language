@@ -177,6 +177,10 @@ Addr vm_execute(VM *vm, Command cmd) {
 	case CMD_EXIT:
 		vm->cmd_ptr = vm->commands->length;
 		break;
+	
+	case CMD_SET_SLEN:
+		vm_set_slen(vm, cmd.addr);
+		break;
 
 	}
 	return 0;
@@ -426,6 +430,13 @@ Addr vm_push_cmd_print(VM *vm, Addr addr) {
 Addr vm_push_cmd_exit(VM *vm) {
 	Command cmd;
 	cmd.code = CMD_EXIT;
+	return array_push(vm->commands, &cmd);
+}
+
+Addr vm_push_cmd_set_slen(VM *vm, Addr addr) {
+	Command cmd;
+	cmd.code = CMD_SET_SLEN;
+	cmd.addr = addr;
 	return array_push(vm->commands, &cmd);
 }
 
@@ -2006,6 +2017,13 @@ Addr vm_leq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr) {
 	return raddr;
 }
 
+Addr vm_set_slen(VM *vm, Addr addr) {
+	Register val;
+	array_get(vm->stack, addr, &val);
+	val.type = TYPE_UINT;
+	val.uint_value = vm->stack->length;
+}
+
 Register vm_pop(VM *vm) {
 	Register reg;
 	array_pop(vm->stack, &reg);
@@ -2240,6 +2258,12 @@ void vm_commands_dump(VM *vm) {
 			break;
 		case CMD_PRINT:
 			printf("%-10s", "print");
+			printf(" %10ld", cmd.addr);
+			printf(" %10s", "-");
+			printf(" %10s", "-");
+			break;
+		case CMD_SET_SLEN:
+			printf("%-10s", "set_slen");
 			printf(" %10ld", cmd.addr);
 			printf(" %10s", "-");
 			printf(" %10s", "-");

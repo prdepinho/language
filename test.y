@@ -267,7 +267,7 @@ main_end:
 %type <int_value> vm_command_int_param
 %type <float_value> vm_command_float_param
 
-%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT VM_EXIT DUMP GOTO NOT AND OR IF WHILE EQUAL NEQUAL GEQ LEQ
+%token UNDERLINE NEWLINE IDENTIFIER INT_LITERAL FLOAT_LITERAL HEX_LITERAL STRING_LITERAL PRINT BYTE INT UINT LONG ULONG FLOAT DOUBLE BOOL STRING PURE QUIT EXIT TRUE FALSE STACK COMMANDS VM_SET_BYTE VM_SET_INT VM_SET_UINT VM_SET_FLOAT VM_MALLOC VM_FREE VM_ADD VM_SUB VM_MULT VM_DIV VM_JUMP VM_JCOND VM_POP VM_PUSH VM_PUSH_BYTE VM_PUSH_INT VM_PUSH_UINT VM_PUSH_FLOAT VM_AND VM_OR VM_XOR VM_NOT VM_EXIT DUMP GOTO NOT AND OR IF WHILE EQUAL NEQUAL GEQ LEQ CONTINUE BREAK RETURN
 %left '+' '-'
 %left '*' '/' '%'
 %left '!' NOT
@@ -379,6 +379,8 @@ sentences
 	| sentences if_block
 	| sentences while_block
 	| sentences block
+	| sentences CONTINUE
+	| sentences BREAK
 	;
 
 
@@ -417,6 +419,7 @@ if_statement
 		vm_push_cmd_jcond(vm, 0, stack_track);
 	}
 	;
+
 
 while_block
 	: while_statement block
@@ -457,7 +460,6 @@ while_statement
 block
 	: start_block sentences end_block
 	;
-
 start_block
 	: '{'
 	{
@@ -465,7 +467,6 @@ start_block
 		array_push(identifiers_scope, &identifier_stack->length);
 	}
 	;
-
 end_block
 	: '}'
 	{
@@ -489,6 +490,7 @@ end_block
 	}
 	;
 
+
 function_declaration
 	: IDENTIFIER  param_list ':' type
 	{
@@ -511,6 +513,7 @@ param_list_content
 	}
 	| '('
 	; 
+
 
 label
 	: IDENTIFIER ':'
@@ -645,6 +648,7 @@ declaration
 		}
 	}
 	;
+
 
 assignment
 	: IDENTIFIER '=' expression

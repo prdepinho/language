@@ -36,6 +36,9 @@ VM_JCOND					{return VM_JCOND;}
 VM_POP						{return VM_POP;}
 VM_EXIT						{return VM_EXIT;}
 
+continue					{return CONTINUE;}
+break						{return BREAK;}
+return						{return RETURN;}
 _							{return UNDERLINE;}
 quit						{return QUIT;}
 exit						{return EXIT;}

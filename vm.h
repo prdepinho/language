@@ -49,6 +49,8 @@ enum CommandCode {
 	CMD_COPY = 30,		// Copy to addr the value of addr_arg.
 	CMD_ASSIGN = 31,	// Assign to addr the value of addr_arg, converting types.
 	CMD_EXIT = 32,		// Exit the program.
+
+	CMD_SET_SLEN = 33,	// Set to addr the current size of the stack.
 };
 // and, or, xor, not, compare
 
@@ -162,6 +164,7 @@ Addr vm_push_cmd_commands(VM *vm);
 Addr vm_push_cmd_print(VM *vm, Addr addr);
 Addr vm_push_cmd_exit(VM *vm);
 
+Addr vm_push_cmd_set_slen(VM *vm, Addr addr);
 
 // Private functions:
 
@@ -204,6 +207,8 @@ Addr vm_equal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_nequal(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_geq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
 Addr vm_leq(VM *vm, Addr lval_addr, Addr rval_addr, Addr raddr);
+
+Addr vm_set_slen(VM *vm, Addr addr);
 
 Register vm_pop(VM *vm);
 Register vm_get(VM *vm, Addr index);	// get a register in absolute address.

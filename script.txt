@@ -1,14 +1,19 @@
 COMMANDS
 
-a:int = 10
-b:int = 20
+# fibonacci
+{
+  a:int = 0
+  b:int = 1
+  c:int = a + b
 
-  c:int = 7
-  while a < b {
+  max:int = 256;
+
+  while a < max {
     PRINT a
-    a = a + 1
+    a = b
+    b = c
+    c = a + b
   }
+}
 
-PRINT b
-
-STACK
+# STACK
